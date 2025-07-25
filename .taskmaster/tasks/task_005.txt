@@ -1,0 +1,68 @@
+# Task ID: 5
+# Title: Implement Visualization Agent and Artifact Storage
+# Status: pending
+# Dependencies: 2, 3
+# Priority: medium
+# Description: Create the Visualization Agent to generate charts and graphs, and implement the artifact storage and retrieval system.
+# Details:
+1. Set up Cloud Storage buckets for artifact storage
+2. Implement the Visualization Agent with code execution sandbox
+3. Create visualization templates for common financial charts:
+   - Asset allocation pie charts
+   - Cashflow trend line charts
+   - Investment performance bar charts
+   - Net worth growth area charts
+4. Implement artifact storage with consent checks
+5. Add signed URL generation for artifact retrieval
+6. Set up Cloud Storage lifecycle rules based on retention periods
+7. Implement the GET /artifacts/{artifact_id}/signed-url endpoint
+
+Visualization Agent example:
+```python
+import matplotlib.pyplot as plt
+import io
+import base64
+from google.cloud import storage
+
+class VisualizationAgent:
+    def __init__(self, storage_client):
+        self.storage_client = storage_client
+        self.bucket_name = "user-artifacts"
+    
+    async def create_pie_chart(self, data, labels, title, user_id, consent):
+        # Create matplotlib figure
+        plt.figure(figsize=(10, 6))
+        plt.pie(data, labels=labels, autopct='%1.1f%%')
+        plt.title(title)
+        
+        # Save to buffer
+        buf = io.BytesIO()
+        plt.savefig(buf, format='png')
+        buf.seek(0)
+        
+        # Store if consent given
+        artifact_id = None
+        if consent.get("store_artifacts"):
+            artifact_id = f"{user_id}-{uuid.uuid4()}"
+            blob = self.storage_client.bucket(self.bucket_name).blob(f"charts/{artifact_id}.png")
+            blob.upload_from_file(buf)
+            
+            # Create artifact record in Firestore
+            await self._create_artifact_record(artifact_id, user_id, "image", title, consent)
+        
+        # Return base64 for immediate display and artifact_id for retrieval
+        buf.seek(0)
+        return {
+            "image_data": base64.b64encode(buf.read()).decode('utf-8'),
+            "artifact_id": artifact_id
+        }
+```
+
+# Test Strategy:
+1. Unit tests for chart generation with sample financial data
+2. Integration tests for artifact storage and retrieval
+3. Test consent-based storage logic
+4. Verify signed URL generation and access control
+5. Test Cloud Storage lifecycle rules
+6. Performance testing for large visualization generation
+7. Security testing for the code execution sandbox

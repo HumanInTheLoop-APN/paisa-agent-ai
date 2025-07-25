@@ -1,0 +1,79 @@
+# Task ID: 6
+# Title: Implement Public Data Agent and Benchmarking
+# Status: pending
+# Dependencies: 2, 3
+# Priority: medium
+# Description: Create the Public Data Agent to fetch market indices, inflation data, and news, and implement portfolio benchmarking capabilities.
+# Details:
+1. Implement Public Data Agent with the following data sources:
+   - Market indices (NIFTY, SENSEX, etc.)
+   - Sector indices
+   - Inflation rates
+   - Interest rates
+   - News sentiment
+2. Set up caching for public data to reduce API calls
+3. Implement portfolio benchmarking logic:
+   - Compare user portfolio performance vs indices
+   - Calculate alpha, beta, Sharpe ratio
+   - Sector allocation comparison
+4. Add historical trend analysis
+5. Implement news relevance filtering for user's holdings
+
+Public Data Agent example:
+```python
+from datetime import datetime, timedelta
+import pandas as pd
+import aiohttp
+
+class PublicDataAgent:
+    def __init__(self, cache_client):
+        self.cache_client = cache_client
+        self.market_data_endpoints = {
+            "nifty50": "https://api.example.com/indices/nifty50",
+            "sensex": "https://api.example.com/indices/sensex",
+            # Other endpoints
+        }
+    
+    async def get_index_data(self, index_name, period="1y"):
+        # Check cache first
+        cache_key = f"index:{index_name}:{period}"
+        cached_data = await self.cache_client.get(cache_key)
+        if cached_data:
+            return cached_data
+        
+        # Fetch from API if not in cache
+        endpoint = self.market_data_endpoints.get(index_name)
+        if not endpoint:
+            raise ValueError(f"Unknown index: {index_name}")
+        
+        async with aiohttp.ClientSession() as session:
+            async with session.get(endpoint, params={"period": period}) as response:
+                data = await response.json()
+                
+                # Cache the result (public data)
+                await self.cache_client.set(cache_key, data, expire=3600)  # 1 hour
+                return data
+    
+    async def compare_portfolio(self, portfolio, benchmark="nifty50", period="1y"):
+        benchmark_data = await self.get_index_data(benchmark, period)
+        
+        # Calculate comparison metrics
+        portfolio_return = self._calculate_return(portfolio, period)
+        benchmark_return = self._calculate_return(benchmark_data, period)
+        
+        return {
+            "portfolio_return": portfolio_return,
+            "benchmark_return": benchmark_return,
+            "alpha": portfolio_return - benchmark_return,
+            "tracking_error": self._calculate_tracking_error(portfolio, benchmark_data)
+        }
+```
+
+# Test Strategy:
+1. Unit tests for each data source integration
+2. Caching tests for public data
+3. Integration tests for portfolio benchmarking
+4. Performance tests with various time periods
+5. Test error handling for API failures
+6. Validate calculation accuracy for financial metrics
+7. Test with different portfolio compositions

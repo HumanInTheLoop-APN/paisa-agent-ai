@@ -1,0 +1,54 @@
+# Task ID: 3
+# Title: Integrate FI-MCP and Implement Personal Finance Agent
+# Status: pending
+# Dependencies: 2
+# Priority: high
+# Description: Integrate with the Financial Information-MCP to fetch user's financial data and implement the Personal Finance Agent to process and normalize this data.
+# Details:
+1. Create FI-MCP integration client with proper authentication
+2. Implement consent management for financial data access
+3. Develop Personal Finance Agent with the following capabilities:
+   - Connect to user's financial accounts via FI-MCP
+   - Fetch account balances, transactions, investments, liabilities
+   - Normalize data into consistent format
+   - Calculate net worth, cashflow trends, and asset allocation
+4. Implement DataAccessLog for tracking all financial data access
+5. Add manual sync endpoint (POST /sync/personal)
+6. Ensure all financial data is processed in-memory and not persisted unless explicitly consented
+
+Personal Finance Agent example:
+```python
+class PersonalFinanceAgent:
+    def __init__(self, fi_mcp_client):
+        self.fi_mcp_client = fi_mcp_client
+    
+    async def fetch_accounts(self, user_id, consent):
+        # Log access attempt
+        await self._log_access(user_id, "fetch_accounts")
+        
+        # Check consent
+        if not consent.get("store_financial_snippets"):
+            # Use in-memory processing only
+            pass
+            
+        accounts = await self.fi_mcp_client.get_accounts(user_id)
+        return self._normalize_accounts(accounts)
+    
+    async def calculate_net_worth(self, user_id, consent):
+        assets = await self.fetch_assets(user_id, consent)
+        liabilities = await self.fetch_liabilities(user_id, consent)
+        return sum(asset["value"] for asset in assets) - sum(liability["value"] for liability in liabilities)
+    
+    async def _log_access(self, user_id, purpose):
+        # Create DataAccessLog entry
+        pass
+```
+
+# Test Strategy:
+1. Unit tests with mock FI-MCP responses
+2. Integration tests with FI-MCP sandbox environment
+3. Consent validation tests
+4. Data normalization tests with various financial account types
+5. Performance testing with large financial datasets
+6. Security audit for data handling practices
+7. Verify DataAccessLog creation for all operations

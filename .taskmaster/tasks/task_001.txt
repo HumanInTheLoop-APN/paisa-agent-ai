@@ -1,0 +1,141 @@
+# Task ID: 1
+# Title: Setup Project Infrastructure and Authentication
+# Status: pending
+# Dependencies: None
+# Priority: high
+# Description: Initialize the project repository, set up Firebase Auth integration, and configure Firestore schemas for user data and chat sessions.
+# Details:
+1. Create a monorepo structure with directories for backend, agents, and infrastructure
+2. Set up Firebase project and enable Authentication with email/password and Google sign-in methods
+3. Configure Firestore with the initial schemas for User, ChatSession, Message, Artifact, Schedule, and DataAccessLog collections
+4. Implement Terraform scripts for GCP resources (Cloud Run, Pub/Sub, Secret Manager)
+5. Set up CI/CD pipeline using GitHub Actions or Cloud Build
+6. Create base IAM roles with least privilege principle
+7. Implement user registration, login, and profile management endpoints in FastAPI
+
+Example Firestore schema implementation:
+```python
+from pydantic import BaseModel, Field
+from typing import Optional, List, Dict, Any
+from datetime import datetime
+
+class User(BaseModel):
+    uid: str
+    profile: Dict[str, Any] = Field(default_factory=lambda: {
+        "name": "",
+        "email": "",
+        "country": "IN",
+        "risk_profile": "moderate"
+    })
+    consents: Dict[str, Any] = Field(default_factory=lambda: {
+        "store_financial_snippets": False,
+        "store_artifacts": False,
+        "retention_days": 30,
+        "granted_at": datetime.now()
+    })
+```
+
+# Test Strategy:
+1. Unit tests for Firebase Auth integration using mock Firebase services
+2. Integration tests for user registration and login flows
+3. Validation tests for Firestore schema constraints
+4. Terraform plan validation in CI pipeline
+5. End-to-end test for user signup, login, and profile update
+6. Security testing for IAM roles and permissions
+
+# Subtasks:
+## 1. Create Monorepo Structure and Initialize Firebase Project [pending]
+### Dependencies: None
+### Description: Set up the project repository with a monorepo structure and initialize the Firebase project with authentication methods.
+### Details:
+1. Create a GitHub repository for the project
+2. Set up monorepo structure with directories: `/backend`, `/agents`, `/infrastructure`, `/docs`
+3. Initialize Firebase project in GCP console
+4. Enable Firebase Authentication with email/password and Google sign-in methods
+5. Configure Firebase project settings and security rules
+6. Create initial README.md with project setup instructions
+7. Set up .gitignore file with appropriate patterns for Python, Node.js, and infrastructure files
+<info added on 2025-07-24T13:59:34.436Z>
+Update monorepo structure to use `/backend`, `/frontend`, `/infrastructure`, `/docs` directories instead of `/agents`. Within the `/backend` directory, create subdirectories for `/auth`, `/agents`, `/apis`, and other backend components to organize the server-side code properly.
+</info added on 2025-07-24T13:59:34.436Z>
+
+## 2. Implement Firestore Schema and Database Configuration [pending]
+### Dependencies: None
+### Description: Define and implement Firestore schemas for all required collections and set up database configuration.
+### Details:
+1. Create Pydantic models for all required schemas: User, ChatSession, Message, Artifact, Schedule, and DataAccessLog
+2. Implement validation logic for each schema
+3. Set up Firestore indexes for efficient querying
+4. Configure Firestore security rules to enforce proper access control
+5. Create database initialization scripts
+6. Implement database connection utilities
+7. Add schema documentation with examples
+
+## 3. Implement User Authentication and Profile Management [pending]
+### Dependencies: None
+### Description: Create authentication endpoints and user profile management functionality using FastAPI and Firebase Auth.
+### Details:
+1. Set up FastAPI application skeleton with proper project structure
+2. Implement Firebase Auth integration with FastAPI
+3. Create authentication middleware for route protection
+4. Implement user registration endpoint with email verification
+5. Create login endpoint with JWT token generation
+6. Implement user profile management endpoints (get, update)
+7. Add consent management endpoints for user data preferences
+8. Implement password reset functionality
+
+## 4. Set up Terraform Infrastructure as Code [pending]
+### Dependencies: None
+### Description: Implement Terraform scripts to provision and manage GCP resources required for the application.
+### Details:
+1. Create Terraform configuration for GCP provider
+2. Implement modules for each resource type: Cloud Run, Pub/Sub, Secret Manager
+3. Set up IAM roles with least privilege principle
+4. Configure networking and security settings
+5. Implement environment-specific configurations (dev, staging, prod)
+6. Create Terraform output variables for resource references
+7. Add remote state management with GCS backend
+8. Document infrastructure deployment process
+
+## 5. Implement CI/CD Pipeline and Deployment Automation [pending]
+### Dependencies: None
+### Description: Set up continuous integration and deployment pipelines using GitHub Actions or Cloud Build.
+### Details:
+1. Create GitHub Actions workflows for CI/CD
+2. Implement build pipeline for backend services
+3. Set up testing stages with proper test coverage reporting
+4. Configure deployment pipelines for different environments
+5. Implement infrastructure deployment using Terraform in CI/CD
+6. Add security scanning for dependencies and code
+7. Configure automated versioning and release management
+8. Set up monitoring and alerting for deployment failures
+
+## 6. Create Monorepo Structure and Initialize Project [pending]
+### Dependencies: None
+### Description: Set up the project directory structure with backend, frontend, and infrastructure folders, initialize Git repository, and create basic configuration files.
+### Details:
+Create root directory with subdirectories: backend/ (containing auth/, agents/, apis/, models/, utils/), frontend/ (for React/Next.js app), infrastructure/ (for Terraform scripts). Initialize Git repository with .gitignore for Python, Node.js, and Terraform. Create pyproject.toml for Python dependencies, package.json for frontend, and README.md with project overview. Set up virtual environment and install base dependencies like FastAPI, Firebase Admin SDK, and Pydantic.
+
+## 7. Configure Firebase Project and Authentication [pending]
+### Dependencies: 1.6
+### Description: Create Firebase project, enable Authentication services, and configure email/password and Google sign-in methods with proper security settings.
+### Details:
+Create new Firebase project in Google Cloud Console. Enable Firebase Authentication and configure email/password provider with email verification. Set up Google OAuth 2.0 credentials and configure Google sign-in provider. Download Firebase service account key and store securely. Configure Firebase Admin SDK in backend with proper initialization. Set up authentication middleware for FastAPI endpoints. Create Firebase configuration file for frontend integration.
+
+## 8. Design and Implement Firestore Database Schemas [pending]
+### Dependencies: 1.7
+### Description: Create Firestore database with optimized schemas for User, ChatSession, Message, Artifact, Schedule, and DataAccessLog collections with proper indexing.
+### Details:
+Create Firestore database in Firebase project. Implement Pydantic models for all collections: User (with profile and consents), ChatSession (with metadata and settings), Message (with content and timestamps), Artifact (for generated content), Schedule (for reminders), and DataAccessLog (for audit trail). Set up composite indexes for efficient querying. Create database initialization script with sample data. Implement CRUD operations for each collection with proper error handling and validation.
+
+## 9. Implement Terraform Infrastructure Scripts [pending]
+### Dependencies: 1.6
+### Description: Create Terraform configurations for GCP resources including Cloud Run services, Pub/Sub topics, Secret Manager, and IAM roles with least privilege access.
+### Details:
+Create Terraform modules for: Cloud Run service for FastAPI backend with auto-scaling configuration, Pub/Sub topics for agent communication, Secret Manager for storing API keys and credentials, Cloud Storage buckets for artifacts, IAM service accounts with minimal required permissions. Set up Terraform state management using Cloud Storage backend. Create environment-specific variable files (dev, staging, prod). Implement resource tagging and naming conventions. Add outputs for service URLs and connection strings.
+
+## 10. Set up CI/CD Pipeline and User Authentication Endpoints [pending]
+### Dependencies: 1.7, 1.8, 1.9
+### Description: Configure GitHub Actions workflow for automated testing and deployment, and implement FastAPI endpoints for user registration, login, and profile management.
+### Details:
+Create GitHub Actions workflow with stages: code quality checks (linting, formatting), unit tests, integration tests, security scanning, Terraform validation, and deployment to Cloud Run. Set up environment secrets for Firebase credentials and GCP service accounts. Implement FastAPI endpoints: POST /auth/register (with email verification), POST /auth/login (with JWT token generation), GET /auth/profile, PUT /auth/profile, POST /auth/logout. Add middleware for JWT token validation and user context injection. Implement password hashing using bcrypt and rate limiting for auth endpoints.

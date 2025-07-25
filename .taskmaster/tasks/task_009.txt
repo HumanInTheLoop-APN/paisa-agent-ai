@@ -1,0 +1,91 @@
+# Task ID: 9
+# Title: Implement Scheduler for Reports and Alerts
+# Status: pending
+# Dependencies: 3, 5, 6
+# Priority: medium
+# Description: Create the scheduling system for periodic reports, alerts, and data synchronization.
+# Details:
+1. Implement the Schedule data model and CRUD endpoints:
+   - POST /schedules
+   - PATCH /schedules/{id}
+   - DELETE /schedules/{id}
+   - GET /schedules
+2. Set up Cloud Scheduler jobs for different frequencies
+3. Create Pub/Sub topics and subscriptions
+4. Implement the webhook endpoint for Cloud Tasks/Workflows
+5. Create report templates:
+   - Weekly spending summary
+   - Monthly net worth update
+   - Quarterly investment performance
+   - Annual tax planning
+6. Implement alert conditions:
+   - Unusual spending patterns
+   - Investment underperformance
+   - Goal milestone achievements
+   - Bill payment reminders
+7. Add notification delivery via FCM/email
+
+Scheduler implementation example:
+```python
+from google.cloud import scheduler_v1, pubsub_v1
+from google.protobuf import timestamp_pb2
+
+class SchedulerService:
+    def __init__(self):
+        self.scheduler_client = scheduler_v1.CloudSchedulerClient()
+        self.pubsub_client = pubsub_v1.PublisherClient()
+        self.project_id = "financial-advisor-app"
+        self.location = "us-central1"
+        self.topic_name = "projects/financial-advisor-app/topics/scheduled-tasks"
+    
+    async def create_schedule(self, user_id, schedule_type, frequency, config):
+        # Create Firestore record
+        schedule_id = str(uuid.uuid4())
+        schedule = {
+            "id": schedule_id,
+            "user_id": user_id,
+            "type": schedule_type,
+            "frequency": frequency,
+            "config": config,
+            "created_at": datetime.now(),
+            "status": "active"
+        }
+        await self._store_schedule(schedule)
+        
+        # Create Cloud Scheduler job
+        parent = f"projects/{self.project_id}/locations/{self.location}"
+        job = {
+            "name": f"{parent}/jobs/user-{user_id}-{schedule_id}",
+            "pubsub_target": {
+                "topic_name": self.topic_name,
+                "data": json.dumps({
+                    "user_id": user_id,
+                    "schedule_id": schedule_id,
+                    "type": schedule_type,
+                    "config": config
+                }).encode()
+            },
+            "schedule": self._frequency_to_cron(frequency)
+        }
+        
+        self.scheduler_client.create_job(parent=parent, job=job)
+        return schedule
+    
+    def _frequency_to_cron(self, frequency):
+        if frequency == "daily":
+            return "0 8 * * *"  # 8 AM every day
+        elif frequency == "weekly":
+            return "0 8 * * 1"  # 8 AM every Monday
+        elif frequency == "monthly":
+            return "0 8 1 * *"  # 8 AM on the 1st of every month
+        # Add more frequencies as needed
+```
+
+# Test Strategy:
+1. Unit tests for schedule creation and management
+2. Integration tests with Cloud Scheduler and Pub/Sub
+3. Test report generation for different templates
+4. Alert condition testing with sample data
+5. Notification delivery testing
+6. Test scheduling with different frequencies
+7. Error handling tests for failed scheduled tasks

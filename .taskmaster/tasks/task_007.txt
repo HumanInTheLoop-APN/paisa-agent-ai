@@ -1,0 +1,83 @@
+# Task ID: 7
+# Title: Implement Goal-Based Planning and Planner Agent
+# Status: pending
+# Dependencies: 3, 6
+# Priority: medium
+# Description: Create the Planner Agent to handle financial goal setting, tracking, and scenario analysis.
+# Details:
+1. Implement goal definition data models
+2. Create the Planner Agent with the following capabilities:
+   - Goal decomposition into actionable steps
+   - Progress tracking against goals
+   - Timeline visualization
+   - Required saving/investment calculations
+3. Implement goal types:
+   - Retirement planning
+   - House purchase
+   - Education fund
+   - Emergency fund
+   - Custom goals
+4. Add goal adjustment recommendations based on progress
+5. Implement goal priority management
+
+Planner Agent example:
+```python
+class PlannerAgent:
+    def __init__(self, personal_finance_agent, public_data_agent):
+        self.personal_finance_agent = personal_finance_agent
+        self.public_data_agent = public_data_agent
+    
+    async def create_goal(self, user_id, goal_type, target_amount, target_date, priority="medium"):
+        # Create goal record
+        goal_id = str(uuid.uuid4())
+        goal = {
+            "id": goal_id,
+            "user_id": user_id,
+            "type": goal_type,
+            "target_amount": target_amount,
+            "target_date": target_date,
+            "priority": priority,
+            "created_at": datetime.now(),
+            "status": "active"
+        }
+        
+        # Store in Firestore
+        await self._store_goal(goal)
+        
+        # Generate initial plan
+        plan = await self.generate_plan(user_id, goal_id)
+        return {"goal": goal, "plan": plan}
+    
+    async def generate_plan(self, user_id, goal_id):
+        goal = await self._get_goal(goal_id)
+        current_assets = await self.personal_finance_agent.get_relevant_assets(user_id, goal["type"])
+        
+        # Calculate required monthly contribution
+        months_remaining = (goal["target_date"] - datetime.now()).days / 30
+        current_value = sum(asset["value"] for asset in current_assets)
+        gap = goal["target_amount"] - current_value
+        
+        # Get expected returns based on asset class
+        expected_returns = await self.public_data_agent.get_expected_returns()
+        
+        # Calculate required monthly contribution with compound interest
+        monthly_contribution = self._calculate_monthly_contribution(
+            gap, months_remaining, expected_returns["moderate"]
+        )
+        
+        return {
+            "current_value": current_value,
+            "gap": gap,
+            "monthly_contribution": monthly_contribution,
+            "steps": self._generate_action_steps(goal, monthly_contribution)
+        }
+```
+
+# Test Strategy:
+1. Unit tests for goal creation and plan generation
+2. Integration tests with Personal Finance and Public Data agents
+3. Test calculation accuracy for different goal types
+4. Validate goal progress tracking
+5. Test plan adjustments based on changing circumstances
+6. Performance testing for complex goal scenarios
+7. User acceptance testing with realistic financial goals

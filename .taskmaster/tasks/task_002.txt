@@ -1,0 +1,58 @@
+# Task ID: 2
+# Title: Implement FastAPI Backend Skeleton with Agent Orchestration
+# Status: pending
+# Dependencies: 1
+# Priority: high
+# Description: Create the FastAPI application structure with endpoints for chat sessions and messages, and implement the Primary Orchestrator Agent using python-adk.
+# Details:
+1. Set up FastAPI application with proper middleware (CORS, authentication, logging)
+2. Implement the session management endpoints:
+   - POST /chat/sessions
+   - GET /chat/sessions
+   - GET /chat/sessions/{session_id}
+   - DELETE /chat/sessions/{session_id}
+3. Implement message endpoints:
+   - POST /chat/sessions/{session_id}/messages
+   - GET /chat/sessions/{session_id}/messages
+4. Set up python-adk with Primary Orchestrator Agent skeleton
+5. Implement agent tool-calling structure for sub-agents (without actual implementation)
+6. Add health check endpoints (/healthz, /readiness)
+7. Configure OpenTelemetry for tracing
+
+Primary Orchestrator Agent example:
+```python
+from google.cloud.aiplatform import Vertex
+from python_adk import Agent, Tool
+
+class PrimaryOrchestratorAgent(Agent):
+    def __init__(self):
+        super().__init__()
+        self.tools = [
+            Tool("personal_finance_tool", self.call_personal_finance_agent),
+            Tool("public_data_tool", self.call_public_data_agent),
+            Tool("python_analysis_tool", self.call_python_analysis_agent),
+            Tool("visualization_tool", self.call_visualization_agent),
+            Tool("planner_tool", self.call_planner_agent),
+            Tool("finalise_response_tool", self.call_finalise_response_agent),
+        ]
+        self.llm = Vertex(model="gemini-pro")
+    
+    async def call_personal_finance_agent(self, query: str):
+        # Placeholder for actual implementation
+        return {"status": "success", "message": "Personal finance data retrieved"}
+    
+    # Other tool methods...
+    
+    async def process(self, user_query: str, session_id: str):
+        # Main orchestration logic
+        response = await self.llm.generate_with_tools(user_query, self.tools)
+        return response
+```
+
+# Test Strategy:
+1. Unit tests for each FastAPI endpoint using TestClient
+2. Mock tests for agent orchestration flow
+3. Integration tests for session and message management
+4. Performance tests for endpoint response times
+5. Test streaming responses with SSE
+6. Validate OpenTelemetry trace generation

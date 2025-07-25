@@ -1,0 +1,55 @@
+# Task ID: 4
+# Title: Develop Chat UX and Simple Response Generation
+# Status: pending
+# Dependencies: 2, 3
+# Priority: high
+# Description: Implement the chat interface with streaming responses and basic financial data summarization capabilities.
+# Details:
+1. Enhance the message endpoint to support streaming responses using Server-Sent Events (SSE)
+2. Implement basic financial data summarization in the Primary Orchestrator Agent
+3. Create response templates for common financial queries
+4. Add support for quick chips/suggestions in the chat interface
+5. Implement chat session title generation
+6. Add message retention logic based on user consent settings
+7. Implement redaction of financial PII in stored messages when consent is not given
+
+Streaming response implementation:
+```python
+from fastapi import FastAPI, Request, Depends
+from fastapi.responses import StreamingResponse
+from typing import AsyncGenerator
+
+app = FastAPI()
+
+async def generate_response(message: str, session_id: str) -> AsyncGenerator[str, None]:
+    # Initialize the primary agent
+    agent = get_primary_agent()
+    
+    # Process the message in chunks
+    async for chunk in agent.process_streaming(message, session_id):
+        yield f"data: {json.dumps({'type': 'chunk', 'content': chunk})}\n\n"
+    
+    yield f"data: {json.dumps({'type': 'done'})}\n\n"
+
+@app.post("/chat/sessions/{session_id}/messages")
+async def post_message(session_id: str, request: Request):
+    data = await request.json()
+    user_message = data.get("message")
+    
+    # Store user message
+    await store_message(session_id, "user", user_message)
+    
+    return StreamingResponse(
+        generate_response(user_message, session_id),
+        media_type="text/event-stream"
+    )
+```
+
+# Test Strategy:
+1. Unit tests for streaming response generation
+2. Integration tests for chat session flow
+3. Test message storage with different consent settings
+4. Verify PII redaction in stored messages
+5. Test session title generation
+6. Performance testing for response latency
+7. User acceptance testing with sample financial queries

@@ -1,0 +1,74 @@
+# Task ID: 10
+# Title: Implement Finalise Response Agent and UX Polish
+# Status: pending
+# Dependencies: 4, 5, 6, 7, 8
+# Priority: medium
+# Description: Create the Finalise Response Agent to format and polish outputs, and implement UX improvements for the chat interface.
+# Details:
+1. Implement the Finalise Response Agent with the following capabilities:
+   - Consistent formatting of financial data
+   - Creation of TL;DR summaries
+   - Prioritization of actionable insights
+   - Personalization based on user profile
+2. Add support for different response formats:
+   - Text summaries
+   - Cards with key metrics
+   - Visual charts and graphs
+   - Tabular data
+3. Implement example prompt suggestions with animations
+4. Create 10-15 example prompts per use case (spending, investments, taxes, goals)
+5. Add light/dark mode support
+6. Implement clear data source and timestamp labeling
+7. Add graceful error handling with partial results and retry options
+
+Finalise Response Agent example:
+```python
+class FinaliseResponseAgent:
+    def __init__(self):
+        self.llm = Vertex(model="gemini-pro")
+    
+    async def format_response(self, raw_data, user_profile, query_type):
+        # Determine the best format based on query type and data
+        format_type = self._determine_format(query_type, raw_data)
+        
+        # Apply formatting based on type
+        if format_type == "summary":
+            return await self._format_summary(raw_data, user_profile)
+        elif format_type == "comparison":
+            return await self._format_comparison(raw_data, user_profile)
+        elif format_type == "recommendation":
+            return await self._format_recommendation(raw_data, user_profile)
+        # Other format types...
+    
+    async def _format_summary(self, data, user_profile):
+        # Create TL;DR
+        tldr = await self._generate_tldr(data)
+        
+        # Format key metrics
+        metrics = self._extract_key_metrics(data)
+        
+        # Personalize based on user profile
+        personalized_insights = await self._personalize_insights(data, user_profile)
+        
+        return {
+            "tldr": tldr,
+            "metrics": metrics,
+            "insights": personalized_insights,
+            "data_sources": self._extract_data_sources(data),
+            "timestamp": datetime.now().isoformat()
+        }
+    
+    async def _generate_tldr(self, data):
+        prompt = f"Summarize the following financial data in 2-3 sentences: {json.dumps(data)}"
+        response = await self.llm.generate(prompt)
+        return response.text
+```
+
+# Test Strategy:
+1. Unit tests for different response formats
+2. Integration tests with other agents
+3. User experience testing with sample queries
+4. A/B testing of different formatting approaches
+5. Performance testing for response generation time
+6. Test personalization with different user profiles
+7. Accessibility testing for all UI elements

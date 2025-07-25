@@ -1,0 +1,5 @@
+---
+alwaysApply: true
+---
+
+- use context7 mcp server for document retrieval for any framework used in the project.

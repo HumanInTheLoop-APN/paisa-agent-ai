@@ -1,0 +1,333 @@
+{
+  "master": {
+    "tasks": [
+      {
+        "id": 1,
+        "title": "Setup Project Infrastructure and Authentication",
+        "description": "Initialize the project repository, set up Firebase Auth integration, and configure Firestore schemas for user data and chat sessions.",
+        "details": "1. Create a monorepo structure with directories for backend, frontend, and infrastructure\n2. Set up Firebase project and enable Authentication with email/password and Google sign-in methods\n3. Configure Firestore with the initial schemas for User, ChatSession, Message, Artifact, Schedule, and DataAccessLog collections\n4. Implement user registration, login, and profile management endpoints in FastAPI\n5. Defer infrastructure tasks (Terraform scripts for GCP resources, CI/CD pipeline, IAM roles) until core functionality is working\n\nExample Firestore schema implementation:\n```python\nfrom pydantic import BaseModel, Field\nfrom typing import Optional, List, Dict, Any\nfrom datetime import datetime\n\nclass User(BaseModel):\n    uid: str\n    profile: Dict[str, Any] = Field(default_factory=lambda: {\n        \"name\": \"\",\n        \"email\": \"\",\n        \"country\": \"IN\",\n        \"risk_profile\": \"moderate\"\n    })\n    consents: Dict[str, Any] = Field(default_factory=lambda: {\n        \"store_financial_snippets\": False,\n        \"store_artifacts\": False,\n        \"retention_days\": 30,\n        \"granted_at\": datetime.now()\n    })\n```",
+        "testStrategy": "1. Unit tests for Firebase Auth integration using mock Firebase services\n2. Integration tests for user registration and login flows\n3. Validation tests for Firestore schema constraints\n4. End-to-end test for user signup, login, and profile update\n5. Security testing for authentication and data access\n6. Defer infrastructure testing (Terraform, CI/CD) until later phases",
+        "priority": "high",
+        "dependencies": [],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Create Monorepo Structure and Initialize Firebase Project",
+            "description": "Set up the project repository with a monorepo structure and initialize the Firebase project with authentication methods.",
+            "dependencies": [],
+            "details": "1. Create a GitHub repository for the project\n2. Set up monorepo structure with directories: `/backend`, `/agents`, `/infrastructure`, `/docs`\n3. Initialize Firebase project in GCP console\n4. Enable Firebase Authentication with email/password and Google sign-in methods\n5. Configure Firebase project settings and security rules\n6. Create initial README.md with project setup instructions\n7. Set up .gitignore file with appropriate patterns for Python, Node.js, and infrastructure files\n<info added on 2025-07-24T13:59:34.436Z>\nUpdate monorepo structure to use `/backend`, `/frontend`, `/infrastructure`, `/docs` directories instead of `/agents`. Within the `/backend` directory, create subdirectories for `/auth`, `/agent`, `/apis`, and other backend components to organize the server-side code properly.\n</info added on 2025-07-24T13:59:34.436Z>\n<info added on 2025-07-24T14:11:32.893Z>\nImplementation plan confirmed for Task 1.1. Current status verification shows:\n\n1. GitHub repository \"talk_to_your_money\" already exists and is accessible\n2. Current directory structure analysis reveals /frontend directory is present with React app\n3. Directory restructuring plan validated:\n   - Root level: /backend, /frontend, /infrastructure, /docs\n   - Backend subdirectories: /auth, /agents, /apis, plus additional components as needed\n4. .gitignore file requires updates for Python, Node.js, and Terraform patterns\n5. README.md needs comprehensive update to reflect new monorepo structure and setup instructions\n6. Firebase project initialization deferred to separate implementation phase to maintain clear separation between local repository setup and cloud service configuration\n\nReady to proceed with directory structure implementation and file updates. Firebase project setup will be handled as a distinct step to ensure proper sequencing of infrastructure tasks.\n</info added on 2025-07-24T14:11:32.893Z>\n<info added on 2025-07-24T14:26:48.869Z>\nMonorepo structure implementation completed successfully:\n\n1. Created root directories: backend/, infrastructure/, docs/ (frontend/ already existed)\n2. Established backend subdirectories: auth/, agents/, apis/\n3. Added README.md files to backend/, infrastructure/, and docs/ directories with structure documentation and usage guidelines\n4. Updated root README.md to reflect complete monorepo structure and directory conventions\n5. Enhanced .gitignore with comprehensive patterns for Python, Node.js, and Terraform/infrastructure files\n6. Confirmed fi-mcp-dev/ remains as separate development/prototype server outside backend structure\n\nAll monorepo setup requirements have been satisfied. Ready to proceed with Firebase project initialization.\n</info added on 2025-07-24T14:26:48.869Z>\n<info added on 2025-07-24T15:38:17.442Z>\nBackend code organization improved: relocated all backend implementation files (main.py, auth/, apis/, models/, utils/) into backend/src/ subdirectory for cleaner project structure. Updated backend/README.md documentation to reflect the new src/ organization pattern. Established backend/src/ as the standard location for all future backend development work.\n</info added on 2025-07-24T15:38:17.442Z>",
+            "status": "done",
+            "testStrategy": "1. Verify repository structure with all required directories\n2. Test Firebase project configuration using Firebase CLI\n3. Validate authentication methods are properly enabled\n4. Create test user accounts to verify authentication setup"
+          },
+          {
+            "id": 2,
+            "title": "Implement Firestore Schema and Database Configuration",
+            "description": "Define and implement Firestore schemas for all required collections and set up database configuration.",
+            "dependencies": [],
+            "details": "1. Create Pydantic models for all required schemas: User, ChatSession, Message, Artifact, Schedule, and DataAccessLog\n2. Implement validation logic for each schema\n3. Set up Firestore indexes for efficient querying\n4. Configure Firestore security rules to enforce proper access control\n5. Create database initialization scripts\n6. Implement database connection utilities\n7. Add schema documentation with examples\n<info added on 2025-07-24T16:37:30.800Z>\nCompleted Pydantic model implementation with comprehensive schema definitions:\n\n- User model with authentication fields and profile references\n- UserProfile model with demographic and financial preference data\n- UserConsents model with granular permission tracking and timestamps\n- ChatSession model with metadata, settings, and participant tracking\n- ChatSessionSettings model for user preferences and configuration\n- Message model with content, timestamps, and agent attribution\n- MessageContent model supporting text, artifacts, and structured data\n- Artifact model with file storage paths, metadata, and access control\n- Schedule model with cron-like frequency patterns and next execution tracking\n- DataAccessLog model with comprehensive audit trail including action types, timestamps, and data scope\n\nAll models include proper field validation, type hints, default values, and comprehensive docstrings. Added centralized __init__.py for streamlined imports across the application. Models are designed to support efficient Firestore operations with appropriate indexing considerations.\n</info added on 2025-07-24T16:37:30.800Z>",
+            "status": "done",
+            "testStrategy": "1. Unit tests for schema validation logic\n2. Validation tests for Firestore schema constraints\n3. Test database connection utilities\n4. Verify security rules with different user scenarios\n5. Test schema migrations and updates"
+          },
+          {
+            "id": 3,
+            "title": "Implement User Authentication and Profile Management",
+            "description": "Create authentication endpoints and user profile management functionality using FastAPI and Firebase Auth.",
+            "dependencies": [],
+            "details": "1. Set up FastAPI application skeleton with proper project structure\n2. Implement Firebase Auth integration with FastAPI\n3. Create authentication middleware for route protection\n4. Implement user registration endpoint with email verification\n5. Create login endpoint with JWT token generation\n6. Implement user profile management endpoints (get, update)\n7. Add consent management endpoints for user data preferences\n8. Implement password reset functionality\n<info added on 2025-07-24T15:44:36.127Z>\nCompleted initial backend scaffolding:\n- Created backend/src/auth/firebase_auth.py with placeholder /register and /login endpoints\n- Implemented backend/src/models/user.py with Pydantic User model including profile and consents fields\n- Integrated authentication endpoints into backend/src/main.py\n- Established proper package structure with __init__.py files\n- Ready to implement actual Firebase Auth integration and endpoint logic\n</info added on 2025-07-24T15:44:36.127Z>\n<info added on 2025-07-24T16:44:46.100Z>\nCompleted comprehensive Firebase Auth integration with FastAPI backend:\n- Implemented complete authentication endpoints: /register, /login, /profile, /consents, /logout with full Firebase Auth integration\n- Integrated Firebase Admin SDK with proper token verification and user management\n- Created FirestoreDB utility class providing CRUD operations for User, ChatSession, Message, and other data models\n- Added comprehensive error handling, input validation, and HTTP status code management across all endpoints\n- Generated requirements.txt with all necessary dependencies including Firebase Admin SDK, FastAPI, and supporting libraries\n- Created run.py startup script for streamlined development server execution\n- Fully integrated Firestore database operations with authentication flow for user profile and consent management\n- All authentication endpoints now perform actual Firebase Auth operations and Firestore data persistence\n</info added on 2025-07-24T16:44:46.100Z>",
+            "status": "done",
+            "testStrategy": "1. Unit tests for authentication endpoints\n2. Integration tests for user registration flow\n3. Test login with different authentication methods\n4. Verify JWT token generation and validation\n5. Test profile update scenarios\n6. Validate consent management functionality\n7. End-to-end test for complete user authentication flow"
+          },
+          {
+            "id": 4,
+            "title": "Set up Terraform Infrastructure as Code - DEFERRED",
+            "description": "Implement Terraform scripts to provision and manage GCP resources required for the application. DEFERRED until core functionality is working.",
+            "dependencies": [],
+            "details": "DEFERRED: This task is postponed to focus on core application development first.\n\nOriginal scope:\n1. Create Terraform configuration for GCP provider\n2. Implement modules for each resource type: Cloud Run, Pub/Sub, Secret Manager\n3. Set up IAM roles with least privilege principle\n4. Configure networking and security settings\n5. Implement environment-specific configurations (dev, staging, prod)\n6. Create Terraform output variables for resource references\n7. Add remote state management with GCS backend\n8. Document infrastructure deployment process",
+            "status": "done",
+            "testStrategy": "DEFERRED: Will be implemented after core agents and functionality are complete"
+          },
+          {
+            "id": 5,
+            "title": "Implement CI/CD Pipeline and Deployment Automation - DEFERRED",
+            "description": "Set up continuous integration and deployment pipelines using GitHub Actions or Cloud Build. DEFERRED until core functionality is working.",
+            "dependencies": [],
+            "details": "DEFERRED: This task is postponed to focus on core application development first.\n\nOriginal scope:\n1. Create GitHub Actions workflows for CI/CD\n2. Implement build pipeline for backend services\n3. Set up testing stages with proper test coverage reporting\n4. Configure deployment pipelines for different environments\n5. Implement infrastructure deployment using Terraform in CI/CD\n6. Add security scanning for dependencies and code\n7. Configure automated versioning and release management\n8. Set up monitoring and alerting for deployment failures",
+            "status": "done",
+            "testStrategy": "DEFERRED: Will be implemented after core agents and functionality are complete"
+          },
+          {
+            "id": 6,
+            "title": "Create Monorepo Structure and Initialize Project",
+            "description": "Set up the project directory structure with backend, frontend, and infrastructure folders, initialize Git repository, and create basic configuration files.",
+            "dependencies": [],
+            "details": "Create root directory with subdirectories: backend/ (containing auth/, agents/, apis/, models/, utils/), frontend/ (for React/Next.js app), infrastructure/ (for Terraform scripts). Initialize Git repository with .gitignore for Python, Node.js, and Terraform. Create pyproject.toml for Python dependencies, package.json for frontend, and README.md with project overview. Set up virtual environment and install base dependencies like FastAPI, Firebase Admin SDK, and Pydantic.",
+            "status": "done",
+            "testStrategy": "Verify directory structure creation, validate configuration files syntax, test virtual environment activation and dependency installation"
+          },
+          {
+            "id": 7,
+            "title": "Configure Firebase Project and Authentication",
+            "description": "Create Firebase project, enable Authentication services, and configure email/password and Google sign-in methods with proper security settings.",
+            "dependencies": [
+              "1.6"
+            ],
+            "details": "Create new Firebase project in Google Cloud Console. Enable Firebase Authentication and configure email/password provider with email verification. Set up Google OAuth 2.0 credentials and configure Google sign-in provider. Download Firebase service account key and store securely. Configure Firebase Admin SDK in backend with proper initialization. Set up authentication middleware for FastAPI endpoints. Create Firebase configuration file for frontend integration.",
+            "status": "done",
+            "testStrategy": "Test Firebase project creation, validate authentication providers configuration, verify service account key functionality, test email verification flow"
+          },
+          {
+            "id": 8,
+            "title": "Design and Implement Firestore Database Schemas",
+            "description": "Create Firestore database with optimized schemas for User, ChatSession, Message, Artifact, Schedule, and DataAccessLog collections with proper indexing.",
+            "dependencies": [
+              "1.7"
+            ],
+            "details": "Create Firestore database in Firebase project. Implement Pydantic models for all collections: User (with profile and consents), ChatSession (with metadata and settings), Message (with content and timestamps), Artifact (for generated content), Schedule (for reminders), and DataAccessLog (for audit trail). Set up composite indexes for efficient querying. Create database initialization script with sample data. Implement CRUD operations for each collection with proper error handling and validation.",
+            "status": "done",
+            "testStrategy": "Unit tests for Pydantic model validation, integration tests for Firestore operations, performance tests for query efficiency, validate index usage"
+          },
+          {
+            "id": 9,
+            "title": "Implement Terraform Infrastructure Scripts - DEFERRED",
+            "description": "Create Terraform configurations for GCP resources including Cloud Run services, Pub/Sub topics, Secret Manager, and IAM roles with least privilege access. DEFERRED until core functionality is working.",
+            "dependencies": [
+              "1.6"
+            ],
+            "details": "DEFERRED: This task is postponed to focus on core application development first.\n\nOriginal scope: Create Terraform modules for: Cloud Run service for FastAPI backend with auto-scaling configuration, Pub/Sub topics for agent communication, Secret Manager for storing API keys and credentials, Cloud Storage buckets for artifacts, IAM service accounts with minimal required permissions. Set up Terraform state management using Cloud Storage backend. Create environment-specific variable files (dev, staging, prod). Implement resource tagging and naming conventions. Add outputs for service URLs and connection strings.",
+            "status": "done",
+            "testStrategy": "DEFERRED: Will be implemented after core agents and functionality are complete"
+          },
+          {
+            "id": 10,
+            "title": "Set up CI/CD Pipeline and User Authentication Endpoints - PARTIALLY DEFERRED",
+            "description": "Configure GitHub Actions workflow for automated testing and deployment (DEFERRED), and implement FastAPI endpoints for user registration, login, and profile management (COMPLETED).",
+            "dependencies": [
+              "1.7",
+              "1.8",
+              "1.9"
+            ],
+            "details": "AUTHENTICATION ENDPOINTS: COMPLETED - All FastAPI authentication endpoints have been implemented.\n\nCI/CD PIPELINE: DEFERRED - GitHub Actions workflow setup is postponed to focus on core application development first.\n\nOriginal CI/CD scope: Create GitHub Actions workflow with stages: code quality checks (linting, formatting), unit tests, integration tests, security scanning, Terraform validation, and deployment to Cloud Run. Set up environment secrets for Firebase credentials and GCP service accounts.",
+            "status": "done",
+            "testStrategy": "Authentication endpoints: Unit tests with TestClient, integration tests with Firebase Auth, security testing for authentication flows. CI/CD: DEFERRED until later phases"
+          }
+        ]
+      },
+      {
+        "id": 2,
+        "title": "Implement FastAPI Backend Skeleton with Agent Orchestration",
+        "description": "Create a comprehensive FastAPI application with proper abstraction layers, including data repositories, service layer, basic agent framework, and API endpoints for chat sessions and messages.",
+        "status": "pending",
+        "dependencies": [
+          1
+        ],
+        "priority": "high",
+        "details": "**Phase 1: Core Infrastructure & Data Layer**\n1. Create Firestore repository abstractions using Repository pattern:\n   - ChatSessionRepository for session CRUD operations\n   - MessageRepository for message management\n   - ArtifactRepository for file/chart storage\n   - Base repository class with common error handling\n2. Implement service layer for business logic:\n   - ChatSessionService for session management\n   - MessageService for message processing\n   - ArtifactService for file operations\n3. Add comprehensive data models with Pydantic validation\n\n**Phase 2: Basic Agent Framework**\n4. Create agent abstraction layer:\n   - BaseAgent class for common agent functionality\n   - Agent state management and conversation context\n   - Agent registry for easy extension\n5. Implement basic agent without tools/subagents:\n   - Simple conversational agent using Vertex AI\n   - Context-aware responses\n   - Conversation history integration\n\n**Phase 3: API Integration**\n6. Set up FastAPI application with middleware:\n   - CORS configuration\n   - Authentication middleware (placeholder)\n   - Request/response logging\n   - Error handling middleware\n7. Implement chat session endpoints:\n   - POST /chat/sessions\n   - GET /chat/sessions\n   - GET /chat/sessions/{session_id}\n   - DELETE /chat/sessions/{session_id}\n8. Implement message endpoints:\n   - POST /chat/sessions/{session_id}/messages\n   - GET /chat/sessions/{session_id}/messages\n9. Add artifact endpoints:\n   - POST /artifacts\n   - GET /artifacts/{artifact_id}\n10. Implement streaming responses for real-time chat using SSE\n11. Add health check and monitoring endpoints (/healthz, /readiness)\n\n**Phase 4: Agent-API Integration**\n12. Connect basic agent with API endpoints\n13. Implement conversation flow management\n14. Add proper error handling and retry mechanisms\n15. Configure OpenTelemetry for tracing\n\n**Architecture Example:**\n```python\n# Repository Layer\nclass ChatSessionRepository:\n    def __init__(self, firestore_client):\n        self.db = firestore_client\n        self.collection = 'chat_sessions'\n    \n    async def create(self, session_data: dict) -> str:\n        # Firestore operations with error handling\n        pass\n\n# Service Layer\nclass ChatSessionService:\n    def __init__(self, session_repo: ChatSessionRepository):\n        self.session_repo = session_repo\n    \n    async def create_session(self, user_id: str) -> ChatSession:\n        # Business logic\n        pass\n\n# Agent Layer\nclass BaseAgent:\n    def __init__(self):\n        self.llm = Vertex(model=\"gemini-pro\")\n        self.context = {}\n    \n    async def process(self, message: str, context: dict) -> str:\n        # Basic agent processing\n        pass\n\n# API Layer\n@app.post(\"/chat/sessions/{session_id}/messages\")\nasync def create_message(session_id: str, message: MessageCreate):\n    # API endpoint implementation\n    pass\n```",
+        "testStrategy": "1. **Repository Layer Tests:**\n   - Unit tests for each repository with Firestore emulator\n   - Error handling tests for database operations\n   - Data validation tests with Pydantic models\n\n2. **Service Layer Tests:**\n   - Unit tests for business logic with mocked repositories\n   - Integration tests between services\n   - Data transformation tests\n\n3. **Agent Framework Tests:**\n   - Unit tests for BaseAgent functionality\n   - Context management tests\n   - Agent state persistence tests\n\n4. **API Layer Tests:**\n   - FastAPI endpoint tests using TestClient\n   - Request/response validation tests\n   - Middleware functionality tests\n   - Streaming response tests with SSE\n\n5. **Integration Tests:**\n   - End-to-end chat flow tests\n   - Agent-API integration tests\n   - Error propagation tests across layers\n\n6. **Performance Tests:**\n   - Endpoint response time tests\n   - Concurrent request handling\n   - Memory usage with conversation context\n\n7. **Monitoring Tests:**\n   - OpenTelemetry trace generation validation\n   - Health check endpoint functionality",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Create Firestore Repository Abstractions",
+            "description": "Implement repository pattern for Firestore operations with proper error handling",
+            "status": "pending",
+            "dependencies": [],
+            "details": "<info added on 2025-07-24T17:05:06.338Z>\nCompleted Firestore Repository Abstractions:\n\n**Base Repository Pattern:**\n- Created BaseRepository class with common CRUD operations\n- Implemented proper error handling with RepositoryError exception\n- Added timestamp management (created_at, updated_at)\n- Added filtering, ordering, and pagination support\n- Added unique ID generation\n\n**Specialized Repositories:**\n- ChatSessionRepository: Session CRUD with user-specific queries\n- MessageRepository: Message management with session filtering\n- ArtifactRepository: Artifact storage with type-based queries\n\n**Key Features:**\n- Async/await support for all operations\n- Comprehensive error handling and logging\n- Flexible querying with filters and ordering\n- Proper data validation and sanitization\n- Support for complex queries (e.g., get_active_session, get_messages_after)\n\nAll repositories follow the Repository pattern and provide a clean abstraction over Firestore operations.\n</info added on 2025-07-24T17:05:06.338Z>",
+            "testStrategy": ""
+          },
+          {
+            "id": 2,
+            "title": "Implement Service Layer for Business Logic",
+            "description": "Create service classes that handle business logic and coordinate between repositories",
+            "status": "pending",
+            "dependencies": [],
+            "details": "<info added on 2025-07-24T17:05:20.752Z>\nCompleted Service Layer Implementation:\n\n**Service Layer Architecture:**\n- Created service classes that handle business logic\n- Implemented proper validation and access control\n- Added data transformation between repositories and API layer\n\n**Service Classes:**\n- ChatSessionService: Session management with user validation\n- MessageService: Message processing with role validation\n- ArtifactService: Artifact storage with file management\n\n**Key Features:**\n- Business logic validation (user access, data integrity)\n- Access control enforcement\n- Data transformation and enrichment\n- Error handling and proper exception propagation\n- File storage for large artifacts (>1KB)\n- Conversation context generation\n- Session state management\n\n**Advanced Features:**\n- Automatic file path generation for large artifacts\n- Content loading from files when needed\n- Metadata management and validation\n- Session message counting\n- Conversation context formatting\n\nAll services provide a clean business logic layer between repositories and API endpoints.\n</info added on 2025-07-24T17:05:20.752Z>",
+            "testStrategy": ""
+          },
+          {
+            "id": 3,
+            "title": "Create Basic Agent Framework",
+            "description": "Implement BaseAgent class and agent abstraction layer without tools/subagents",
+            "status": "pending",
+            "dependencies": [],
+            "details": "<info added on 2025-07-24T17:17:46.873Z>\nCompleted Google ADK-based Agent Framework:\n\n**BaseAgentADK Implementation:**\n- Created comprehensive base agent wrapper using Google ADK Agent class\n- Implemented proper ADK initialization with InMemoryRunner and InMemorySessionService\n- Added error handling and availability checks for ADK dependencies\n- Integrated session management and context handling\n\n**ConversationalAgentADK Implementation:**\n- Built conversational agent using Google ADK LlmAgent\n- Configured with personal finance-specific instructions and guidelines\n- Added conversation context building and session-aware processing\n- Implemented capability reporting and conversation suggestions\n\n**AgentRegistry Implementation:**\n- Created centralized registry for managing multiple ADK agents\n- Added agent type registration and instance management\n- Implemented agent discovery and health checking\n- Added async capability detection for message routing\n\n**Key Features:**\n- Full Google ADK integration with proper error handling\n- Session-aware conversation processing\n- Context building from user profiles and conversation history\n- Agent capability reporting and health monitoring\n- Extensible registry system for multiple agent types\n\n**Dependencies Added:**\n- google-adk==1.0.0\n- google-genai\n- google-cloud-aiplatform\n\nAll agents now use Google ADK as the core framework instead of custom implementations.\n</info added on 2025-07-24T17:17:46.873Z>",
+            "testStrategy": ""
+          },
+          {
+            "id": 4,
+            "title": "Set up FastAPI Application Structure",
+            "description": "Create FastAPI app with middleware, error handling, and basic configuration",
+            "status": "pending",
+            "dependencies": [],
+            "details": "",
+            "testStrategy": ""
+          },
+          {
+            "id": 5,
+            "title": "Implement Chat Session API Endpoints",
+            "description": "Create CRUD endpoints for chat session management",
+            "status": "pending",
+            "dependencies": [],
+            "details": "",
+            "testStrategy": ""
+          },
+          {
+            "id": 6,
+            "title": "Implement Message API Endpoints",
+            "description": "Create endpoints for message creation and retrieval with streaming support",
+            "status": "pending",
+            "dependencies": [],
+            "details": "",
+            "testStrategy": ""
+          },
+          {
+            "id": 7,
+            "title": "Add Artifact Management Endpoints",
+            "description": "Create endpoints for artifact storage and retrieval",
+            "status": "pending",
+            "dependencies": [],
+            "details": "",
+            "testStrategy": ""
+          },
+          {
+            "id": 8,
+            "title": "Integrate Agent with API Endpoints",
+            "description": "Connect the basic agent with FastAPI endpoints and implement conversation flow",
+            "status": "pending",
+            "dependencies": [],
+            "details": "",
+            "testStrategy": ""
+          },
+          {
+            "id": 9,
+            "title": "Add Health Check and Monitoring",
+            "description": "Implement health check endpoints and OpenTelemetry tracing",
+            "status": "pending",
+            "dependencies": [],
+            "details": "",
+            "testStrategy": ""
+          }
+        ]
+      },
+      {
+        "id": 3,
+        "title": "Integrate FI-MCP and Implement Personal Finance Agent",
+        "description": "Integrate with the Financial Information-MCP to fetch user's financial data and implement the Personal Finance Agent to process and normalize this data.",
+        "details": "1. Create FI-MCP integration client with proper authentication\n2. Implement consent management for financial data access\n3. Develop Personal Finance Agent with the following capabilities:\n   - Connect to user's financial accounts via FI-MCP\n   - Fetch account balances, transactions, investments, liabilities\n   - Normalize data into consistent format\n   - Calculate net worth, cashflow trends, and asset allocation\n4. Implement DataAccessLog for tracking all financial data access\n5. Add manual sync endpoint (POST /sync/personal)\n6. Ensure all financial data is processed in-memory and not persisted unless explicitly consented\n\nPersonal Finance Agent example:\n```python\nclass PersonalFinanceAgent:\n    def __init__(self, fi_mcp_client):\n        self.fi_mcp_client = fi_mcp_client\n    \n    async def fetch_accounts(self, user_id, consent):\n        # Log access attempt\n        await self._log_access(user_id, \"fetch_accounts\")\n        \n        # Check consent\n        if not consent.get(\"store_financial_snippets\"):\n            # Use in-memory processing only\n            pass\n            \n        accounts = await self.fi_mcp_client.get_accounts(user_id)\n        return self._normalize_accounts(accounts)\n    \n    async def calculate_net_worth(self, user_id, consent):\n        assets = await self.fetch_assets(user_id, consent)\n        liabilities = await self.fetch_liabilities(user_id, consent)\n        return sum(asset[\"value\"] for asset in assets) - sum(liability[\"value\"] for liability in liabilities)\n    \n    async def _log_access(self, user_id, purpose):\n        # Create DataAccessLog entry\n        pass\n```",
+        "testStrategy": "1. Unit tests with mock FI-MCP responses\n2. Integration tests with FI-MCP sandbox environment\n3. Consent validation tests\n4. Data normalization tests with various financial account types\n5. Performance testing with large financial datasets\n6. Security audit for data handling practices\n7. Verify DataAccessLog creation for all operations",
+        "priority": "high",
+        "dependencies": [
+          2
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 4,
+        "title": "Develop Chat UX and Simple Response Generation",
+        "description": "Implement the chat interface with streaming responses and basic financial data summarization capabilities.",
+        "details": "1. Enhance the message endpoint to support streaming responses using Server-Sent Events (SSE)\n2. Implement basic financial data summarization in the Primary Orchestrator Agent\n3. Create response templates for common financial queries\n4. Add support for quick chips/suggestions in the chat interface\n5. Implement chat session title generation\n6. Add message retention logic based on user consent settings\n7. Implement redaction of financial PII in stored messages when consent is not given\n\nStreaming response implementation:\n```python\nfrom fastapi import FastAPI, Request, Depends\nfrom fastapi.responses import StreamingResponse\nfrom typing import AsyncGenerator\n\napp = FastAPI()\n\nasync def generate_response(message: str, session_id: str) -> AsyncGenerator[str, None]:\n    # Initialize the primary agent\n    agent = get_primary_agent()\n    \n    # Process the message in chunks\n    async for chunk in agent.process_streaming(message, session_id):\n        yield f\"data: {json.dumps({'type': 'chunk', 'content': chunk})}\\n\\n\"\n    \n    yield f\"data: {json.dumps({'type': 'done'})}\\n\\n\"\n\n@app.post(\"/chat/sessions/{session_id}/messages\")\nasync def post_message(session_id: str, request: Request):\n    data = await request.json()\n    user_message = data.get(\"message\")\n    \n    # Store user message\n    await store_message(session_id, \"user\", user_message)\n    \n    return StreamingResponse(\n        generate_response(user_message, session_id),\n        media_type=\"text/event-stream\"\n    )\n```",
+        "testStrategy": "1. Unit tests for streaming response generation\n2. Integration tests for chat session flow\n3. Test message storage with different consent settings\n4. Verify PII redaction in stored messages\n5. Test session title generation\n6. Performance testing for response latency\n7. User acceptance testing with sample financial queries",
+        "priority": "high",
+        "dependencies": [
+          2,
+          3
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 5,
+        "title": "Implement Visualization Agent and Artifact Storage",
+        "description": "Create the Visualization Agent to generate charts and graphs, and implement the artifact storage and retrieval system.",
+        "details": "1. Set up Cloud Storage buckets for artifact storage (defer until infrastructure phase)\n2. Implement the Visualization Agent with local file storage initially\n3. Create visualization templates for common financial charts:\n   - Asset allocation pie charts\n   - Cashflow trend line charts\n   - Investment performance bar charts\n   - Net worth growth area charts\n4. Implement artifact storage with consent checks\n5. Add base64 encoding for immediate chart display\n6. Defer Cloud Storage lifecycle rules until infrastructure phase\n7. Implement basic artifact retrieval endpoints\n\nVisualization Agent example:\n```python\nimport matplotlib.pyplot as plt\nimport io\nimport base64\n\nclass VisualizationAgent:\n    def __init__(self):\n        self.local_storage_path = \"./artifacts\"\n    \n    async def create_pie_chart(self, data, labels, title, user_id, consent):\n        # Create matplotlib figure\n        plt.figure(figsize=(10, 6))\n        plt.pie(data, labels=labels, autopct='%1.1f%%')\n        plt.title(title)\n        \n        # Save to buffer\n        buf = io.BytesIO()\n        plt.savefig(buf, format='png')\n        buf.seek(0)\n        \n        # Store locally if consent given\n        artifact_id = None\n        if consent.get(\"store_artifacts\"):\n            artifact_id = f\"{user_id}-{uuid.uuid4()}\"\n            # Save to local storage initially\n            with open(f\"{self.local_storage_path}/{artifact_id}.png\", \"wb\") as f:\n                f.write(buf.getvalue())\n            \n            # Create artifact record in Firestore\n            await self._create_artifact_record(artifact_id, user_id, \"image\", title, consent)\n        \n        # Return base64 for immediate display and artifact_id for retrieval\n        buf.seek(0)\n        return {\n            \"image_data\": base64.b64encode(buf.read()).decode('utf-8'),\n            \"artifact_id\": artifact_id\n        }\n```",
+        "testStrategy": "1. Unit tests for chart generation with sample financial data\n2. Integration tests for local artifact storage and retrieval\n3. Test consent-based storage logic\n4. Verify base64 encoding for immediate display\n5. Test artifact record creation in Firestore\n6. Performance testing for large visualization generation\n7. Defer Cloud Storage testing until infrastructure phase",
+        "priority": "medium",
+        "dependencies": [
+          2,
+          3
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 6,
+        "title": "Implement Public Data Agent and Benchmarking",
+        "description": "Create the Public Data Agent to fetch market indices, inflation data, and news, and implement portfolio benchmarking capabilities.",
+        "details": "1. Implement Public Data Agent with the following data sources:\n   - Market indices (NIFTY, SENSEX, etc.)\n   - Sector indices\n   - Inflation rates\n   - Interest rates\n   - News sentiment\n2. Set up local caching for public data to reduce API calls (defer Redis until infrastructure phase)\n3. Implement portfolio benchmarking logic:\n   - Compare user portfolio performance vs indices\n   - Calculate alpha, beta, Sharpe ratio\n   - Sector allocation comparison\n4. Add historical trend analysis\n5. Implement news relevance filtering for user's holdings\n\nPublic Data Agent example:\n```python\nfrom datetime import datetime, timedelta\nimport pandas as pd\nimport aiohttp\nimport json\n\nclass PublicDataAgent:\n    def __init__(self):\n        self.local_cache = {}  # Simple in-memory cache initially\n        self.market_data_endpoints = {\n            \"nifty50\": \"https://api.example.com/indices/nifty50\",\n            \"sensex\": \"https://api.example.com/indices/sensex\",\n            # Other endpoints\n        }\n    \n    async def get_index_data(self, index_name, period=\"1y\"):\n        # Check local cache first\n        cache_key = f\"index:{index_name}:{period}\"\n        if cache_key in self.local_cache:\n            cached_data, timestamp = self.local_cache[cache_key]\n            if (datetime.now() - timestamp).seconds < 3600:  # 1 hour cache\n                return cached_data\n        \n        # Fetch from API if not in cache\n        endpoint = self.market_data_endpoints.get(index_name)\n        if not endpoint:\n            raise ValueError(f\"Unknown index: {index_name}\")\n        \n        async with aiohttp.ClientSession() as session:\n            async with session.get(endpoint, params={\"period\": period}) as response:\n                data = await response.json()\n                \n                # Cache the result locally\n                self.local_cache[cache_key] = (data, datetime.now())\n                return data\n    \n    async def compare_portfolio(self, portfolio, benchmark=\"nifty50\", period=\"1y\"):\n        benchmark_data = await self.get_index_data(benchmark, period)\n        \n        # Calculate comparison metrics\n        portfolio_return = self._calculate_return(portfolio, period)\n        benchmark_return = self._calculate_return(benchmark_data, period)\n        \n        return {\n            \"portfolio_return\": portfolio_return,\n            \"benchmark_return\": benchmark_return,\n            \"alpha\": portfolio_return - benchmark_return,\n            \"tracking_error\": self._calculate_tracking_error(portfolio, benchmark_data)\n        }\n```",
+        "testStrategy": "1. Unit tests for each data source integration\n2. Local caching tests for public data\n3. Integration tests for portfolio benchmarking\n4. Performance tests with various time periods\n5. Test error handling for API failures\n6. Validate calculation accuracy for financial metrics\n7. Test with different portfolio compositions",
+        "priority": "medium",
+        "dependencies": [
+          2,
+          3
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 7,
+        "title": "Implement Goal-Based Planning and Planner Agent",
+        "description": "Create the Planner Agent to handle financial goal setting, tracking, and scenario analysis.",
+        "details": "1. Implement goal definition data models\n2. Create the Planner Agent with the following capabilities:\n   - Goal decomposition into actionable steps\n   - Progress tracking against goals\n   - Timeline visualization\n   - Required saving/investment calculations\n3. Implement goal types:\n   - Retirement planning\n   - House purchase\n   - Education fund\n   - Emergency fund\n   - Custom goals\n4. Add goal adjustment recommendations based on progress\n5. Implement goal priority management\n\nPlanner Agent example:\n```python\nclass PlannerAgent:\n    def __init__(self, personal_finance_agent, public_data_agent):\n        self.personal_finance_agent = personal_finance_agent\n        self.public_data_agent = public_data_agent\n    \n    async def create_goal(self, user_id, goal_type, target_amount, target_date, priority=\"medium\"):\n        # Create goal record\n        goal_id = str(uuid.uuid4())\n        goal = {\n            \"id\": goal_id,\n            \"user_id\": user_id,\n            \"type\": goal_type,\n            \"target_amount\": target_amount,\n            \"target_date\": target_date,\n            \"priority\": priority,\n            \"created_at\": datetime.now(),\n            \"status\": \"active\"\n        }\n        \n        # Store in Firestore\n        await self._store_goal(goal)\n        \n        # Generate initial plan\n        plan = await self.generate_plan(user_id, goal_id)\n        return {\"goal\": goal, \"plan\": plan}\n    \n    async def generate_plan(self, user_id, goal_id):\n        goal = await self._get_goal(goal_id)\n        current_assets = await self.personal_finance_agent.get_relevant_assets(user_id, goal[\"type\"])\n        \n        # Calculate required monthly contribution\n        months_remaining = (goal[\"target_date\"] - datetime.now()).days / 30\n        current_value = sum(asset[\"value\"] for asset in current_assets)\n        gap = goal[\"target_amount\"] - current_value\n        \n        # Get expected returns based on asset class\n        expected_returns = await self.public_data_agent.get_expected_returns()\n        \n        # Calculate required monthly contribution with compound interest\n        monthly_contribution = self._calculate_monthly_contribution(\n            gap, months_remaining, expected_returns[\"moderate\"]\n        )\n        \n        return {\n            \"current_value\": current_value,\n            \"gap\": gap,\n            \"monthly_contribution\": monthly_contribution,\n            \"steps\": self._generate_action_steps(goal, monthly_contribution)\n        }\n```",
+        "testStrategy": "1. Unit tests for goal creation and plan generation\n2. Integration tests with Personal Finance and Public Data agents\n3. Test calculation accuracy for different goal types\n4. Validate goal progress tracking\n5. Test plan adjustments based on changing circumstances\n6. Performance testing for complex goal scenarios\n7. User acceptance testing with realistic financial goals",
+        "priority": "medium",
+        "dependencies": [
+          3,
+          6
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 8,
+        "title": "Implement Python Analysis Agent with Code Execution Sandbox",
+        "description": "Create the Python Analysis Agent with a secure code execution environment for running financial simulations and advanced analysis.",
+        "details": "1. Set up local code execution environment initially (defer Cloud Run job until infrastructure phase)\n2. Implement Python Analysis Agent with the following capabilities:\n   - Monte Carlo simulations for retirement planning\n   - Portfolio optimization (Markowitz model)\n   - Tax impact analysis\n   - Cashflow forecasting\n3. Configure whitelisted libraries (pandas, numpy, matplotlib, plotly)\n4. Implement resource limits and timeouts using local process management\n5. Set up local result caching for expensive computations\n6. Add error handling and fallback strategies\n\nPython Analysis Agent example:\n```python\nimport subprocess\nimport json\nimport tempfile\nimport os\nfrom datetime import datetime\n\nclass PythonAnalysisAgent:\n    def __init__(self):\n        self.local_cache = {}  # Simple in-memory cache initially\n        self.whitelisted_libraries = [\"pandas\", \"numpy\", \"matplotlib\", \"plotly\", \"scipy\"]\n        self.timeout = 30\n    \n    async def execute_analysis(self, code, data, timeout=30):\n        # Validate code (basic security check)\n        if not self._validate_code(code):\n            return {\"error\": \"Code contains unauthorized operations\"}\n        \n        # Create temporary file for execution\n        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:\n            f.write(f\"import json\\ndata = {json.dumps(data)}\\n\")\n            f.write(code)\n            temp_file = f.name\n        \n        try:\n            # Execute in subprocess with timeout\n            result = subprocess.run(\n                [\"python\", temp_file],\n                capture_output=True,\n                text=True,\n                timeout=timeout\n            )\n            \n            if result.returncode == 0:\n                return json.loads(result.stdout)\n            else:\n                return {\"error\": result.stderr}\n        except subprocess.TimeoutExpired:\n            return {\"error\": \"Code execution timed out\"}\n        except Exception as e:\n            return {\"error\": str(e)}\n        finally:\n            # Clean up temporary file\n            os.unlink(temp_file)\n    \n    async def run_monte_carlo(self, portfolio, contributions, years, simulations=1000):\n        code = \"\"\"\nimport pandas as pd\nimport numpy as np\nimport json\n\n# Run Monte Carlo simulation\nresults = []\nfor _ in range(data['simulations']):\n    # Simulation logic here\n    # ...\n    pass\n\n# Return results\nprint(json.dumps({\n    'percentiles': {\n        '10': 100000,  # Placeholder values\n        '50': 150000,\n        '90': 200000\n    }\n}))\n        \"\"\"\n        \n        return await self.execute_analysis(\n            code,\n            {\"portfolio\": portfolio, \"contributions\": contributions, \"years\": years, \"simulations\": simulations}\n        )\n```",
+        "testStrategy": "1. Security testing for local code execution\n2. Unit tests for analysis functions with known inputs/outputs\n3. Integration tests with other agents\n4. Performance testing with varying computation complexity\n5. Resource limit testing with subprocess management\n6. Error handling tests with invalid inputs\n7. Validation of Monte Carlo simulation results against known distributions",
+        "priority": "medium",
+        "dependencies": [
+          2,
+          5
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 9,
+        "title": "Implement Scheduler for Reports and Alerts",
+        "description": "Create the scheduling system for periodic reports, alerts, and data synchronization.",
+        "details": "1. Implement the Schedule data model and CRUD endpoints:\n   - POST /schedules\n   - PATCH /schedules/{id}\n   - DELETE /schedules/{id}\n   - GET /schedules\n2. Set up local task scheduling initially (defer Cloud Scheduler until infrastructure phase)\n3. Create simple in-memory task queue for development\n4. Create report templates:\n   - Weekly spending summary\n   - Monthly net worth update\n   - Quarterly investment performance\n   - Annual tax planning\n5. Implement alert conditions:\n   - Unusual spending patterns\n   - Investment underperformance\n   - Goal milestone achievements\n   - Bill payment reminders\n6. Add basic notification system (defer FCM/email until infrastructure phase)\n\nScheduler implementation example:\n```python\nimport asyncio\nfrom datetime import datetime, timedelta\nfrom typing import Dict, List\n\nclass LocalSchedulerService:\n    def __init__(self):\n        self.scheduled_tasks: Dict[str, dict] = {}\n        self.running = False\n    \n    async def create_schedule(self, user_id, schedule_type, frequency, config):\n        # Create Firestore record\n        schedule_id = str(uuid.uuid4())\n        schedule = {\n            \"id\": schedule_id,\n            \"user_id\": user_id,\n            \"type\": schedule_type,\n            \"frequency\": frequency,\n            \"config\": config,\n            \"created_at\": datetime.now(),\n            \"status\": \"active\",\n            \"next_run\": self._calculate_next_run(frequency)\n        }\n        await self._store_schedule(schedule)\n        \n        # Add to local scheduler\n        self.scheduled_tasks[schedule_id] = schedule\n        return schedule\n    \n    async def start_scheduler(self):\n        self.running = True\n        while self.running:\n            await self._process_scheduled_tasks()\n            await asyncio.sleep(60)  # Check every minute\n    \n    async def _process_scheduled_tasks(self):\n        now = datetime.now()\n        for schedule_id, schedule in self.scheduled_tasks.items():\n            if schedule[\"next_run\"] <= now and schedule[\"status\"] == \"active\":\n                await self._execute_task(schedule)\n                schedule[\"next_run\"] = self._calculate_next_run(schedule[\"frequency\"])\n    \n    def _calculate_next_run(self, frequency):\n        now = datetime.now()\n        if frequency == \"daily\":\n            return now + timedelta(days=1)\n        elif frequency == \"weekly\":\n            return now + timedelta(weeks=1)\n        elif frequency == \"monthly\":\n            return now + timedelta(days=30)\n        return now + timedelta(hours=1)\n```",
+        "testStrategy": "1. Unit tests for schedule creation and management\n2. Integration tests with local task scheduler\n3. Test report generation for different templates\n4. Alert condition testing with sample data\n5. Test scheduling with different frequencies\n6. Error handling tests for failed scheduled tasks\n7. Defer Cloud Scheduler and notification testing until infrastructure phase",
+        "priority": "medium",
+        "dependencies": [
+          3,
+          5,
+          6
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 10,
+        "title": "Implement Finalise Response Agent and UX Polish",
+        "description": "Create the Finalise Response Agent to format and polish outputs, and implement UX improvements for the chat interface.",
+        "details": "1. Implement the Finalise Response Agent with the following capabilities:\n   - Consistent formatting of financial data\n   - Creation of TL;DR summaries\n   - Prioritization of actionable insights\n   - Personalization based on user profile\n2. Add support for different response formats:\n   - Text summaries\n   - Cards with key metrics\n   - Visual charts and graphs\n   - Tabular data\n3. Implement example prompt suggestions with animations\n4. Create 10-15 example prompts per use case (spending, investments, taxes, goals)\n5. Add light/dark mode support\n6. Implement clear data source and timestamp labeling\n7. Add graceful error handling with partial results and retry options\n\nFinalise Response Agent example:\n```python\nclass FinaliseResponseAgent:\n    def __init__(self):\n        self.llm = Vertex(model=\"gemini-pro\")\n    \n    async def format_response(self, raw_data, user_profile, query_type):\n        # Determine the best format based on query type and data\n        format_type = self._determine_format(query_type, raw_data)\n        \n        # Apply formatting based on type\n        if format_type == \"summary\":\n            return await self._format_summary(raw_data, user_profile)\n        elif format_type == \"comparison\":\n            return await self._format_comparison(raw_data, user_profile)\n        elif format_type == \"recommendation\":\n            return await self._format_recommendation(raw_data, user_profile)\n        # Other format types...\n    \n    async def _format_summary(self, data, user_profile):\n        # Create TL;DR\n        tldr = await self._generate_tldr(data)\n        \n        # Format key metrics\n        metrics = self._extract_key_metrics(data)\n        \n        # Personalize based on user profile\n        personalized_insights = await self._personalize_insights(data, user_profile)\n        \n        return {\n            \"tldr\": tldr,\n            \"metrics\": metrics,\n            \"insights\": personalized_insights,\n            \"data_sources\": self._extract_data_sources(data),\n            \"timestamp\": datetime.now().isoformat()\n        }\n    \n    async def _generate_tldr(self, data):\n        prompt = f\"Summarize the following financial data in 2-3 sentences: {json.dumps(data)}\"\n        response = await self.llm.generate(prompt)\n        return response.text\n```",
+        "testStrategy": "1. Unit tests for different response formats\n2. Integration tests with other agents\n3. User experience testing with sample queries\n4. A/B testing of different formatting approaches\n5. Performance testing for response generation time\n6. Test personalization with different user profiles\n7. Accessibility testing for all UI elements",
+        "priority": "medium",
+        "dependencies": [
+          4,
+          5,
+          6,
+          7,
+          8
+        ],
+        "status": "pending",
+        "subtasks": []
+      }
+    ],
+    "metadata": {
+      "created": "2025-07-23T20:50:03.403Z",
+      "updated": "2025-07-24T16:58:34.826Z",
+      "description": "Tasks for master context"
+    }
+  }
+}

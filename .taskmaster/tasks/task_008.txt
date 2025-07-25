@@ -1,0 +1,103 @@
+# Task ID: 8
+# Title: Implement Python Analysis Agent with Code Execution Sandbox
+# Status: pending
+# Dependencies: 2, 5
+# Priority: medium
+# Description: Create the Python Analysis Agent with a secure code execution environment for running financial simulations and advanced analysis.
+# Details:
+1. Set up isolated Cloud Run job or Firecracker VM for code execution
+2. Implement Python Analysis Agent with the following capabilities:
+   - Monte Carlo simulations for retirement planning
+   - Portfolio optimization (Markowitz model)
+   - Tax impact analysis
+   - Cashflow forecasting
+3. Configure whitelisted libraries (pandas, numpy, matplotlib, plotly)
+4. Implement resource limits and timeouts
+5. Set up result caching for expensive computations
+6. Add error handling and fallback strategies
+
+Python Analysis Agent example:
+```python
+import docker
+import json
+import base64
+
+class PythonAnalysisAgent:
+    def __init__(self):
+        self.docker_client = docker.from_env()
+        self.container_image = "financial-analysis-sandbox:latest"
+        self.whitelisted_libraries = ["pandas", "numpy", "matplotlib", "plotly", "scipy"]
+    
+    async def execute_analysis(self, code, data, timeout=30):
+        # Validate code (basic security check)
+        if not self._validate_code(code):
+            return {"error": "Code contains unauthorized operations"}
+        
+        # Prepare input data
+        input_data = base64.b64encode(json.dumps(data).encode()).decode()
+        
+        # Run in isolated container
+        try:
+            container = self.docker_client.containers.run(
+                self.container_image,
+                ["python", "-c", code],
+                environment={"INPUT_DATA": input_data},
+                remove=True,
+                detach=True,
+                mem_limit="512m",
+                cpu_quota=50000,  # 50% of CPU
+                network_mode="none",  # No network access
+                timeout=timeout
+            )
+            
+            # Wait for result
+            result = container.logs()
+            return json.loads(result)
+        except Exception as e:
+            return {"error": str(e)}
+    
+    async def run_monte_carlo(self, portfolio, contributions, years, simulations=1000):
+        code = """
+        import pandas as pd
+        import numpy as np
+        import json
+        import base64
+        import os
+        
+        # Get input data
+        input_data = json.loads(base64.b64decode(os.environ['INPUT_DATA']).decode())
+        portfolio = input_data['portfolio']
+        contributions = input_data['contributions']
+        years = input_data['years']
+        simulations = input_data['simulations']
+        
+        # Run Monte Carlo simulation
+        results = []
+        for _ in range(simulations):
+            # Simulation logic here
+            # ...
+            
+        # Return results
+        print(json.dumps({
+            'percentiles': {
+                '10': results_df.quantile(0.1).to_dict(),
+                '50': results_df.quantile(0.5).to_dict(),
+                '90': results_df.quantile(0.9).to_dict()
+            }
+        }))
+        """
+        
+        return await self.execute_analysis(
+            code,
+            {"portfolio": portfolio, "contributions": contributions, "years": years, "simulations": simulations}
+        )
+```
+
+# Test Strategy:
+1. Security testing for code execution sandbox
+2. Unit tests for analysis functions with known inputs/outputs
+3. Integration tests with other agents
+4. Performance testing with varying computation complexity
+5. Resource limit testing
+6. Error handling tests with invalid inputs
+7. Validation of Monte Carlo simulation results against known distributions
