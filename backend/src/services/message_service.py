@@ -1,15 +1,14 @@
-from datetime import datetime
 from typing import Any, Dict, List, Optional
 
-from ..models import Message, MessageContent, MessageType
+from ..models import MessageCreate, MessageRole, MessageType
 from ..repositories import MessageRepository
 
 
 class MessageService:
     """Service class for message business logic"""
 
-    def __init__(self, message_repo: MessageRepository):
-        self.message_repo = message_repo
+    def __init__(self):
+        self.message_repo = MessageRepository()
 
     async def create_message(
         self,
@@ -36,20 +35,20 @@ class MessageService:
         except ValueError:
             raise ValueError(f"Invalid message type: {message_type}")
 
-        # Create message content
-        message_content = {
-            "content": content,
-            "type": message_type_enum.value,
-            "metadata": metadata or {},
-        }
-
         # Create message
         message_id = await self.message_repo.create_message(
-            session_id=session_id, user_id=user_id, role=role, content=message_content
+            MessageCreate(
+                session_id=session_id,
+                user_id=user_id,
+                role=MessageRole(role),
+                content=content,
+                message_type=message_type_enum,
+                metadata=metadata,
+            )
         )
 
         # Return created message
-        return await self.message_repo.get(message_id)
+        return await self.message_repo.get_by_id(message_id)
 
     async def get_session_messages(
         self, session_id: str, user_id: str, limit: Optional[int] = None

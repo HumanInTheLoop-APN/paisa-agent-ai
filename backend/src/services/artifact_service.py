@@ -1,199 +1,213 @@
-import os
-from datetime import datetime
 from typing import Any, Dict, List, Optional
 
+from ..models.artifact import (
+    Artifact,
+    ArtifactCreate,
+    ArtifactStatus,
+    ArtifactType,
+    ArtifactUpdate,
+)
 from ..repositories import ArtifactRepository
+from ..repositories.message_repository import MessageRepository
 
 
 class ArtifactService:
-    """Service class for artifact business logic"""
+    """Service for artifact operations"""
 
-    def __init__(self, artifact_repo: ArtifactRepository):
-        self.artifact_repo = artifact_repo
-        self.storage_path = "backend/storage/artifacts"
-
-        # Ensure storage directory exists
-        os.makedirs(self.storage_path, exist_ok=True)
+    def __init__(self):
+        self.repository = ArtifactRepository()
+        self.message_repository = MessageRepository()
 
     async def create_artifact(
         self,
-        user_id: str,
         session_id: str,
+        user_id: str,
         message_id: str,
-        artifact_type: str,
+        artifact_type: ArtifactType,
         title: str,
-        content: str,
-        mime_type: str = "application/json",
-        metadata: Optional[Dict[str, Any]] = None,
-    ) -> Dict[str, Any]:
-        """Create a new artifact with business logic validation"""
-        # Validate inputs
-        if not all([user_id, session_id, message_id, artifact_type, title, content]):
-            raise ValueError("All required fields must be provided")
+        description: Optional[str] = None,
+        metadata: Optional[dict] = None,
+    ) -> Artifact:
+        """Create a new artifact"""
+        # Verify message ownership
+        message = await self.message_repository.get_message_by_user(message_id, user_id)
+        if not message:
+            raise ValueError("Message not found or access denied")
 
-        # Validate artifact type
-        valid_types = ["chart", "report", "analysis", "json", "html", "csv", "image"]
-        if artifact_type not in valid_types:
-            raise ValueError(f"Artifact type must be one of: {valid_types}")
-
-        # Calculate content size
-        size_bytes = len(content.encode("utf-8"))
-
-        # Generate file path for storage
-        file_path = None
-        if size_bytes > 1024:  # Store large content in files
-            file_path = self._generate_file_path(user_id, artifact_type)
-            await self._save_content_to_file(file_path, content)
-
-        # Create artifact
-        artifact_id = await self.artifact_repo.create_artifact(
-            user_id=user_id,
+        artifact_data = ArtifactCreate(
             session_id=session_id,
+            user_id=user_id,
             message_id=message_id,
             artifact_type=artifact_type,
             title=title,
-            content=content if size_bytes <= 1024 else "",  # Store small content in DB
-            mime_type=mime_type,
-            file_path=file_path,
-            size_bytes=size_bytes,
+            description=description,
             metadata=metadata,
         )
 
-        # Return created artifact
-        return await self.artifact_repo.get(artifact_id)
+        return await self.repository.create_artifact(artifact_data)
 
-    async def get_artifact(
-        self, artifact_id: str, user_id: str
-    ) -> Optional[Dict[str, Any]]:
-        """Get a specific artifact with access control"""
-        if not artifact_id or not user_id:
-            raise ValueError("Artifact ID and User ID are required")
+    async def get_session_artifacts(
+        self, session_id: str, user_id: str
+    ) -> List[Artifact]:
+        """Get all artifacts for a specific session (ensures ownership)"""
+        return await self.repository.get_session_artifacts(session_id, user_id)
 
-        artifact = await self.artifact_repo.get(artifact_id)
-
-        # Check access control
-        if artifact and artifact.get("user_id") != user_id:
-            raise PermissionError("Access denied to this artifact")
-
-        # Load content from file if needed
-        if artifact and artifact.get("file_path") and not artifact.get("content"):
-            content = await self._load_content_from_file(artifact["file_path"])
-            artifact["content"] = content
-
+    async def get_artifact(self, artifact_id: str, user_id: str) -> Artifact:
+        """Get a specific artifact for a user (ensures ownership)"""
+        artifact = await self.repository.get_artifact_by_user(artifact_id, user_id)
+        if artifact is None:
+            raise ValueError(f"Artifact {artifact_id} not found or access denied")
         return artifact
+
+    async def update_artifact(
+        self,
+        artifact_id: str,
+        user_id: str,
+        title: Optional[str] = None,
+        description: Optional[str] = None,
+        status: Optional[ArtifactStatus] = None,
+        content: Optional[Dict[str, Any]] = None,
+        metadata: Optional[dict] = None,
+    ) -> Optional[Artifact]:
+        """Update an artifact (ensures ownership)"""
+        update_data = ArtifactUpdate(
+            title=title,
+            description=description,
+            status=status,
+            content=content,
+            metadata=metadata,
+        )
+        return await self.repository.update_artifact(artifact_id, user_id, update_data)
+
+    async def delete_artifact(self, artifact_id: str, user_id: str) -> bool:
+        """Delete an artifact (ensures ownership)"""
+        return await self.repository.delete_artifact(artifact_id, user_id)
+
+    async def get_message_artifacts(
+        self, message_id: str, user_id: str
+    ) -> List[Artifact]:
+        """Get all artifacts for a specific message (ensures ownership)"""
+        return await self.repository.get_message_artifacts(message_id, user_id)
+
+    async def get_artifacts_by_type(
+        self, session_id: str, user_id: str, artifact_type: ArtifactType
+    ) -> List[Artifact]:
+        """Get artifacts by type for a specific session"""
+        return await self.repository.get_artifacts_by_type(
+            session_id, user_id, artifact_type
+        )
+
+    async def get_artifacts_by_status(
+        self, session_id: str, user_id: str, status: ArtifactStatus
+    ) -> List[Artifact]:
+        """Get artifacts by status for a specific session"""
+        return await self.repository.get_artifacts_by_status(
+            session_id, user_id, status
+        )
+
+    async def update_artifact_status(
+        self, artifact_id: str, user_id: str, status: ArtifactStatus
+    ) -> bool:
+        """Update artifact status"""
+        return await self.repository.update_artifact_status(
+            artifact_id, user_id, status
+        )
 
     async def get_user_artifacts(
         self, user_id: str, limit: Optional[int] = None
-    ) -> List[Dict[str, Any]]:
-        """Get all artifacts for a user"""
-        if not user_id:
-            raise ValueError("User ID is required")
+    ) -> List[Artifact]:
+        """Get all artifacts for a user across all sessions"""
+        return await self.repository.get_user_artifacts(user_id, limit)
 
-        artifacts = await self.artifact_repo.get_user_artifacts(user_id, limit)
+    async def create_chart_artifact(
+        self,
+        session_id: str,
+        user_id: str,
+        message_id: str,
+        title: str,
+        chart_data: Dict[str, Any],
+        description: Optional[str] = None,
+    ) -> Artifact:
+        """Create a chart artifact"""
+        metadata = {
+            "chart_type": chart_data.get("type", "unknown"),
+            "chart_config": chart_data.get("config", {}),
+        }
 
-        # Load content for artifacts stored in files
-        for artifact in artifacts:
-            if artifact.get("file_path") and not artifact.get("content"):
-                content = await self._load_content_from_file(artifact["file_path"])
-                artifact["content"] = content
-
-        return artifacts
-
-    async def get_session_artifacts(
-        self, session_id: str, user_id: str, limit: Optional[int] = None
-    ) -> List[Dict[str, Any]]:
-        """Get artifacts for a session with access control"""
-        if not session_id or not user_id:
-            raise ValueError("Session ID and User ID are required")
-
-        artifacts = await self.artifact_repo.get_session_artifacts(session_id, limit)
-
-        # Filter by user access (in a real app, you'd check session ownership)
-        # For now, we'll return all artifacts for the session
-
-        # Load content for artifacts stored in files
-        for artifact in artifacts:
-            if artifact.get("file_path") and not artifact.get("content"):
-                content = await self._load_content_from_file(artifact["file_path"])
-                artifact["content"] = content
-
-        return artifacts
-
-    async def get_artifacts_by_type(
-        self, user_id: str, artifact_type: str, limit: Optional[int] = None
-    ) -> List[Dict[str, Any]]:
-        """Get artifacts of a specific type for a user"""
-        if not user_id or not artifact_type:
-            raise ValueError("User ID and Artifact Type are required")
-
-        artifacts = await self.artifact_repo.get_artifacts_by_type(
-            user_id, artifact_type, limit
+        artifact = await self.create_artifact(
+            session_id=session_id,
+            user_id=user_id,
+            message_id=message_id,
+            artifact_type=ArtifactType.CHART,
+            title=title,
+            description=description,
+            metadata=metadata,
         )
 
-        # Load content for artifacts stored in files
-        for artifact in artifacts:
-            if artifact.get("file_path") and not artifact.get("content"):
-                content = await self._load_content_from_file(artifact["file_path"])
-                artifact["content"] = content
+        # Update with content and mark as completed
+        await self.update_artifact(
+            artifact_id=artifact.id,
+            user_id=user_id,
+            content=chart_data,
+            status=ArtifactStatus.COMPLETED,
+        )
 
-        return artifacts
+        return await self.get_artifact(artifact.id, user_id)
 
-    async def update_artifact_metadata(
-        self, artifact_id: str, user_id: str, metadata: Dict[str, Any]
-    ) -> bool:
-        """Update artifact metadata with validation"""
-        if not isinstance(metadata, dict):
-            raise ValueError("Metadata must be a dictionary")
+    async def create_report_artifact(
+        self,
+        session_id: str,
+        user_id: str,
+        message_id: str,
+        title: str,
+        report_content: Dict[str, Any],
+        description: Optional[str] = None,
+    ) -> Artifact:
+        """Create a report artifact"""
+        artifact = await self.create_artifact(
+            session_id=session_id,
+            user_id=user_id,
+            message_id=message_id,
+            artifact_type=ArtifactType.REPORT,
+            title=title,
+            description=description,
+        )
 
-        # Verify access
-        artifact = await self.get_artifact(artifact_id, user_id)
-        if not artifact:
-            return False
+        # Update with content and mark as completed
+        await self.update_artifact(
+            artifact_id=artifact.id,
+            user_id=user_id,
+            content=report_content,
+            status=ArtifactStatus.COMPLETED,
+        )
 
-        return await self.artifact_repo.update_artifact_metadata(artifact_id, metadata)
+        return await self.get_artifact(artifact.id, user_id)
 
-    async def delete_artifact(self, artifact_id: str, user_id: str) -> bool:
-        """Delete an artifact with access control"""
-        # Verify access
-        artifact = await self.get_artifact(artifact_id, user_id)
-        if not artifact:
-            return False
+    async def create_analysis_artifact(
+        self,
+        session_id: str,
+        user_id: str,
+        message_id: str,
+        title: str,
+        analysis_content: Dict[str, Any],
+        description: Optional[str] = None,
+    ) -> Artifact:
+        """Create an analysis artifact"""
+        artifact = await self.create_artifact(
+            session_id=session_id,
+            user_id=user_id,
+            message_id=message_id,
+            artifact_type=ArtifactType.ANALYSIS,
+            title=title,
+            description=description,
+        )
 
-        # Delete file if it exists
-        if artifact.get("file_path"):
-            await self._delete_file(artifact["file_path"])
+        # Update with content and mark as completed
+        await self.update_artifact(
+            artifact_id=artifact.id,
+            user_id=user_id,
+            content=analysis_content,
+            status=ArtifactStatus.COMPLETED,
+        )
 
-        return await self.artifact_repo.delete(artifact_id)
-
-    def _generate_file_path(self, user_id: str, artifact_type: str) -> str:
-        """Generate a file path for artifact storage"""
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        filename = f"{user_id}_{artifact_type}_{timestamp}.json"
-        return os.path.join(self.storage_path, filename)
-
-    async def _save_content_to_file(self, file_path: str, content: str) -> None:
-        """Save content to a file"""
-        try:
-            with open(file_path, "w", encoding="utf-8") as f:
-                f.write(content)
-        except Exception as e:
-            raise Exception(f"Failed to save content to file: {str(e)}")
-
-    async def _load_content_from_file(self, file_path: str) -> str:
-        """Load content from a file"""
-        try:
-            if os.path.exists(file_path):
-                with open(file_path, "r", encoding="utf-8") as f:
-                    return f.read()
-            return ""
-        except Exception as e:
-            raise Exception(f"Failed to load content from file: {str(e)}")
-
-    async def _delete_file(self, file_path: str) -> None:
-        """Delete a file"""
-        try:
-            if os.path.exists(file_path):
-                os.remove(file_path)
-        except Exception as e:
-            # Log error but don't raise - file might already be deleted
-            print(f"Warning: Failed to delete file {file_path}: {str(e)}")
+        return await self.get_artifact(artifact.id, user_id)
