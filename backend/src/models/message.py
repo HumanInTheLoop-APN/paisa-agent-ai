@@ -1,41 +1,58 @@
 from datetime import datetime
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 
 from pydantic import BaseModel, Field
 
 
+class MessageRole(str, Enum):
+    USER = "user"
+    ASSISTANT = "assistant"
+    SYSTEM = "system"
+
+
 class MessageType(str, Enum):
     TEXT = "text"
-    IMAGE = "image"
-    CHART = "chart"
-    JSON = "json"
+    TOOL_CALL = "tool_call"
+    TOOL_RESULT = "tool_result"
+    ERROR = "error"
 
 
-class MessageContent(BaseModel):
-    content: Any = Field(description="Message text content")
-    type: MessageType = Field(description="Message type (text, image, chart, etc.)")
-    metadata: Dict[str, Any] = Field(
-        default_factory=dict, description="Additional message metadata"
+class MessageBase(BaseModel):
+    session_id: str = Field(..., description="Chat session ID")
+    user_id: str = Field(..., description="User ID for message ownership")
+    role: MessageRole = Field(..., description="Message role (user/assistant/system)")
+    content: str = Field(..., description="Message content")
+    message_type: MessageType = Field(
+        default=MessageType.TEXT, description="Message type"
+    )
+    metadata: Optional[Dict[str, Any]] = Field(
+        default=None, description="Additional metadata"
     )
 
 
-class Message(BaseModel):
-    id: str = Field(description="Unique message identifier")
-    session_id: str = Field(description="Chat session ID")
-    user_id: str = Field(description="Firebase user ID")
-    role: str = Field(description="Message role (user, assistant, system)")
-    content: MessageContent = Field(description="Message content")
-    created_at: datetime = Field(
-        default_factory=datetime.now, description="Message creation timestamp"
+class MessageCreate(MessageBase):
+    pass
+
+
+class MessageUpdate(BaseModel):
+    content: Optional[str] = None
+    metadata: Optional[Dict[str, Any]] = None
+
+
+class Message(MessageBase):
+    id: str = Field(..., description="Unique message ID")
+    created_at: datetime = Field(..., description="Message creation timestamp")
+    updated_at: datetime = Field(..., description="Last update timestamp")
+    parent_message_id: Optional[str] = Field(
+        None, description="Parent message ID for threading"
     )
-    tokens_used: Optional[int] = Field(
-        default=None, description="Number of tokens used"
+    tool_calls: Optional[Dict[str, Any]] = Field(
+        None, description="Tool call information"
     )
-    processing_time: Optional[float] = Field(
-        default=None, description="Processing time in seconds"
+    tool_results: Optional[Dict[str, Any]] = Field(
+        None, description="Tool result information"
     )
-    artifacts: List[str] = Field(
-        default_factory=list,
-        description="List of artifact IDs generated from this message",
-    )
+
+    class Config:
+        from_attributes = True

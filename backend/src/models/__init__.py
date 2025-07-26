@@ -1,19 +1,24 @@
-from .artifact import Artifact
-from .chat_session import ChatSession, ChatSessionSettings
-from .data_access_log import DataAccessLog
-from .message import Message, MessageContent
-from .schedule import Schedule
-from .user import User, UserConsents, UserProfile
+# Models module
+from .artifact import Artifact, ArtifactCreate, ArtifactUpdate
+from .chat_session import ChatSession, ChatSessionCreate, ChatSessionUpdate
+from .message import (
+    Message,
+    MessageCreate,
+    MessageRole,
+    MessageType,
+    MessageUpdate,
+)
 
 __all__ = [
-    "User",
-    "UserProfile",
-    "UserConsents",
-    "ChatSession",
-    "ChatSessionSettings",
-    "Message",
-    "MessageContent",
     "Artifact",
-    "Schedule",
-    "DataAccessLog",
+    "ArtifactCreate",
+    "ArtifactUpdate",
+    "ChatSession",
+    "ChatSessionCreate",
+    "ChatSessionUpdate",
+    "Message",
+    "MessageCreate",
+    "MessageType",
+    "MessageUpdate",
+    "MessageRole",
 ]
