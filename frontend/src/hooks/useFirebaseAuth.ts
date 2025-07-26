@@ -36,8 +36,12 @@ export const useFirebaseAuth = ({
 
     const handleAuthSuccess = async (authResult: any) => {
       try {
+        // Force token refresh to ensure we have a fresh token
+        await authResult.user.getIdToken(true);
         const idToken = await authResult.user.getIdToken();
         console.log("🔑 Got ID token:", idToken.substring(0, 50) + "...");
+        console.log("📏 Token length:", idToken.length);
+        console.log("🔍 Token format check:", idToken.startsWith("eyJ"));
 
         const response = await authService.googleSignIn(idToken);
         console.log("🎯 Backend response:", response);

@@ -11,8 +11,8 @@ from .base_repository import BaseRepository
 class ChatSessionRepository(BaseRepository[ChatSession]):
     """Repository for chat session operations"""
 
-    def __init__(self):
-        super().__init__("chat_sessions")
+    def __init__(self, db=None):
+        super().__init__("chat_sessions", db=db)
         self._item_type = ChatSession
 
     def _get_key(self, item: ChatSession) -> str:

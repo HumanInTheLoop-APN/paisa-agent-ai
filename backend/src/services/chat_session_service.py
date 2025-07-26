@@ -11,8 +11,11 @@ from ..repositories.chat_session_repository import ChatSessionRepository
 class ChatSessionService:
     """Service for chat session operations"""
 
-    def __init__(self):
-        self.repository = ChatSessionRepository()
+    def __init__(
+        self, chat_session_repository: ChatSessionRepository, message_repository=None
+    ):
+        self.repository = chat_session_repository
+        self.message_repository = message_repository
 
     async def create_session(
         self,

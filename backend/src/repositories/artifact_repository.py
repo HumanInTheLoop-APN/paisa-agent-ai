@@ -1,8 +1,11 @@
+import os
+from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional
 
 from ..models.artifact import (
     Artifact,
     ArtifactCreate,
+    ArtifactSource,
     ArtifactStatus,
     ArtifactType,
     ArtifactUpdate,
@@ -13,8 +16,8 @@ from .base_repository import BaseRepository
 class ArtifactRepository(BaseRepository[Artifact]):
     """Repository for artifact operations"""
 
-    def __init__(self):
-        super().__init__("artifacts")
+    def __init__(self, db=None):
+        super().__init__("artifacts", db=db)
         self._item_type = Artifact
 
     def _get_key(self, item: Artifact) -> str:
@@ -32,6 +35,8 @@ class ArtifactRepository(BaseRepository[Artifact]):
             and item.title is not None
             and hasattr(item, "id")
             and item.id is not None
+            and hasattr(item, "source")
+            and item.source is not None
         )
 
     def _reconstruct_item(self, data: Dict[str, Any]) -> Artifact:
@@ -48,7 +53,10 @@ class ArtifactRepository(BaseRepository[Artifact]):
             title=artifact_data.title,
             description=artifact_data.description,
             artifact_type=artifact_data.artifact_type,
+            source=artifact_data.source,
             metadata=artifact_data.metadata,
+            consent_required=artifact_data.consent_required,
+            consent_granted=artifact_data.consent_granted,
             created_at=None,  # Will be set by base repository
             updated_at=None,  # Will be set by base repository
             status=ArtifactStatus.PENDING,
@@ -56,6 +64,9 @@ class ArtifactRepository(BaseRepository[Artifact]):
             file_path=None,
             file_size=None,
             mime_type=None,
+            original_filename=None,
+            storage_uri=None,
+            retention_expires_at=None,
         )
         return await self.create(artifact)
 
@@ -102,6 +113,8 @@ class ArtifactRepository(BaseRepository[Artifact]):
             artifact.content = update_data.content
         if update_data.metadata is not None:
             artifact.metadata = update_data.metadata
+        if update_data.consent_granted is not None:
+            artifact.consent_granted = update_data.consent_granted
 
         return await self.update(artifact)
 
@@ -146,6 +159,13 @@ class ArtifactRepository(BaseRepository[Artifact]):
         artifacts = await self.get_session_artifacts(session_id, user_id)
         return [artifact for artifact in artifacts if artifact.status == status]
 
+    async def get_artifacts_by_source(
+        self, session_id: str, user_id: str, source: ArtifactSource
+    ) -> List[Artifact]:
+        """Get artifacts by source for a specific session"""
+        artifacts = await self.get_session_artifacts(session_id, user_id)
+        return [artifact for artifact in artifacts if artifact.source == source]
+
     async def update_artifact_status(
         self, artifact_id: str, user_id: str, status: ArtifactStatus
     ) -> bool:
@@ -171,3 +191,26 @@ class ArtifactRepository(BaseRepository[Artifact]):
             artifacts = artifacts[:limit]
 
         return artifacts
+
+    async def delete_expired_artifacts(self) -> int:
+        """Delete artifacts that have exceeded their retention period"""
+        all_artifacts = await self.get_all()
+        deleted_count = 0
+
+        for artifact in all_artifacts:
+            if (
+                artifact.retention_expires_at
+                and artifact.retention_expires_at < datetime.now()
+            ):
+                success = await self.delete(artifact.id)
+                if success:
+                    deleted_count += 1
+
+                    # Also delete the file if it exists
+                    if artifact.file_path and os.path.exists(artifact.file_path):
+                        try:
+                            os.remove(artifact.file_path)
+                        except OSError:
+                            pass  # File might already be deleted
+
+        return deleted_count

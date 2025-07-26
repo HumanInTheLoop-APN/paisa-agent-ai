@@ -1,0 +1,153 @@
+# Docker Compose configuration for MCP Context Forge Gateway
+# Based on: https://github.com/IBM/mcp-context-forge
+
+services:
+  # MCP Context Forge Gateway
+  mcpgateway:
+    image: ghcr.io/ibm/mcp-context-forge:latest
+    platform: linux/amd64
+    container_name: mcpgateway
+    ports:
+      - "${PORT:-4444}:4444"
+    env_file:
+      - .env
+    environment:
+      # Basic configuration
+      - HOST=${HOST:-0.0.0.0}
+      - PORT=4444  # Internal port is always 4444
+      
+      # Authentication
+      - AUTH_REQUIRED=${AUTH_REQUIRED:-true}
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY}
+      - BASIC_AUTH_USER=${BASIC_AUTH_USER:-admin}
+      - BASIC_AUTH_PASSWORD=${BASIC_AUTH_PASSWORD}
+      
+      # Features
+      - MCPGATEWAY_UI_ENABLED=${MCPGATEWAY_UI_ENABLED:-true}
+      - MCPGATEWAY_ADMIN_API_ENABLED=${MCPGATEWAY_ADMIN_API_ENABLED:-true}
+      
+      # Database configuration
+      - DATABASE_URL=${DATABASE_URL:-sqlite:////data/mcp.db}
+      
+      # Database pool settings
+      - DB_POOL_SIZE=${DB_POOL_SIZE:-200}
+      - DB_MAX_OVERFLOW=${DB_MAX_OVERFLOW:-10}
+      - DB_POOL_TIMEOUT=${DB_POOL_TIMEOUT:-30}
+      - DB_POOL_RECYCLE=${DB_POOL_RECYCLE:-3600}
+      - DB_MAX_RETRIES=${DB_MAX_RETRIES:-3}
+      - DB_RETRY_INTERVAL_MS=${DB_RETRY_INTERVAL_MS:-2000}
+      
+      # Redis configuration (optional)
+      - REDIS_URL=${REDIS_URL:-}
+      
+      # Logging
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      
+      # Development mode
+      - MCPGATEWAY_DEV_MODE=${MCPGATEWAY_DEV_MODE:-false}
+      
+      # Security settings
+      - CORS_ORIGINS=${CORS_ORIGINS:-}
+      - RATE_LIMIT_REQUESTS=${RATE_LIMIT_REQUESTS:-}
+      - RATE_LIMIT_WINDOW=${RATE_LIMIT_WINDOW:-}
+      
+      # SSL/TLS settings
+      - SSL_CERT_PATH=${SSL_CERT_PATH:-}
+      - SSL_KEY_PATH=${SSL_KEY_PATH:-}
+      
+      # Advanced configuration
+      - MAX_REQUEST_SIZE=${MAX_REQUEST_SIZE:-}
+      - REQUEST_TIMEOUT=${REQUEST_TIMEOUT:-}
+      - WORKERS=${WORKERS:-}
+      
+      # Monitoring
+      - METRICS_ENABLED=${METRICS_ENABLED:-false}
+      - METRICS_PORT=${METRICS_PORT:-9090}
+      
+      # Backup and maintenance
+      - AUTO_BACKUP_INTERVAL=${AUTO_BACKUP_INTERVAL:-}
+      - BACKUP_RETENTION_DAYS=${BACKUP_RETENTION_DAYS:-}
+      
+      # Development settings
+      - DEBUG=${DEBUG:-false}
+      - HOT_RELOAD=${HOT_RELOAD:-false}
+      
+      # Networking
+      - ALLOWED_HOSTS=${ALLOWED_HOSTS:-}
+      - TRUST_PROXY=${TRUST_PROXY:-false}
+      
+    volumes:
+      # Persist database and configuration
+      - ./data:/data
+      - ./config:/app/config:ro
+      
+      # SSL certificates (if using HTTPS)
+      - ./ssl:/app/ssl:ro
+      
+    restart: unless-stopped
+    
+    # Health check
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4444/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # PostgreSQL database (optional - uncomment if you prefer PostgreSQL over SQLite)
+  # postgres:
+  #   image: postgres:15-alpine
+  #   container_name: mcp-postgres
+  #   environment:
+  #     - POSTGRES_USER=${POSTGRES_USER:-postgres}
+  #     - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-mysecretpassword}
+  #     - POSTGRES_DB=${POSTGRES_DB:-mcp}
+  #   volumes:
+  #     - postgres_data:/var/lib/postgresql/data
+  #   ports:
+  #     - "5432:5432"
+  #   restart: unless-stopped
+  #   healthcheck:
+  #     test: ["CMD-SHELL", "pg_isready -U postgres"]
+  #     interval: 30s
+  #     timeout: 10s
+  #     retries: 3
+
+  # Redis for queueing (optional - uncomment if needed)
+  # redis:
+  #   image: redis:7-alpine
+  #   container_name: mcp-redis
+  #   ports:
+  #     - "6379:6379"
+  #   volumes:
+  #     - redis_data:/data
+  #   restart: unless-stopped
+  #   healthcheck:
+  #     test: ["CMD", "redis-cli", "ping"]
+  #     interval: 30s
+  #     timeout: 10s
+  #     retries: 3
+
+  # Example MCP Server: Fast Time Server
+  # Uncomment to include a sample MCP server for testing
+  # fast-time-server:
+  #   image: ghcr.io/ibm/fast-time-server:latest
+  #   container_name: fast-time-server
+  #   ports:
+  #     - "8888:8080"
+  #   command: ["-transport=sse", "-listen=0.0.0.0", "-port=8080", "-log-level=debug"]
+  #   depends_on:
+  #     - mcpgateway
+  #   restart: unless-stopped
+
+# volumes:
+  # Uncomment if using PostgreSQL
+  # postgres_data:
+  
+  # Uncomment if using Redis
+  # redis_data:
+
+# use network host to access servers running on the host using localhost
+networks:
+  mcp-network:
+    driver: host

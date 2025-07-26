@@ -1,12 +1,12 @@
-from typing import Optional
+from typing import Annotated, Optional
 
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from firebase_admin import auth
 from pydantic import BaseModel
 
+from ..config.firebase_config import get_auth
 from ..models import User, UserConsents, UserProfile
-from ..utils.database import db
+from ..repositories.user_repository import UserRepository
 
 router = APIRouter()
 security = HTTPBearer()
@@ -49,9 +49,12 @@ async def get_current_user(
         token = credentials.credentials
         print(f"🔍 Received token in get_current_user: {token[:50]}...")
 
+        # Get Firebase Auth client
+        auth_client = get_auth()
+
         # Try to verify as ID token first (in case frontend sends ID token directly)
         try:
-            decoded_token = auth.verify_id_token(token)
+            decoded_token = auth_client.verify_id_token(token)
             uid = decoded_token["uid"]
             print(f"✅ Verified as ID token for UID: {uid}")
         except Exception as id_token_error:
@@ -66,7 +69,7 @@ async def get_current_user(
 
         # Fetch user from Firestore database
         print(f"🔍 Fetching user {uid} from database...")
-        user = await db.get_user(uid)
+        user = await UserRepository().get_user(uid)
         if not user:
             print(f"❌ User {uid} not found in database")
             raise HTTPException(status_code=404, detail="User not found in database")
@@ -80,6 +83,9 @@ async def get_current_user(
         raise HTTPException(
             status_code=401, detail="Invalid authentication credentials"
         )
+
+
+GetCurrentUserDep = Annotated[User, Depends(get_current_user)]
 
 
 def is_email(identifier: str) -> bool:
@@ -105,7 +111,7 @@ async def register_user(request: UserRegistrationRequest):
     """
     try:
         # Create user in Firebase Auth
-        user_record = auth.create_user(
+        user_record = get_auth().create_user(
             email=request.email, password=request.password, display_name=request.name
         )
 
@@ -122,10 +128,10 @@ async def register_user(request: UserRegistrationRequest):
         )
 
         # Save user to Firestore database
-        success = await db.create_user(user)
+        success = await UserRepository().create_user(user)
         if not success:
             # Clean up Firebase Auth user if Firestore save fails
-            auth.delete_user(user_record.uid)
+            get_auth().delete_user(user_record.uid)
             raise HTTPException(status_code=500, detail="Failed to save user profile")
 
         return {
@@ -133,8 +139,6 @@ async def register_user(request: UserRegistrationRequest):
             "user_id": user_record.uid,
             "email": user_record.email,
         }
-    except auth.EmailAlreadyExistsError:
-        raise HTTPException(status_code=400, detail="Email already registered")
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Registration failed: {str(e)}")
 
@@ -151,7 +155,7 @@ async def login_user(request: UserLoginRequest):
         # Determine if identifier is email or phone
         if is_email(request.identifier):
             # Login with email
-            user_record = auth.get_user_by_email(request.identifier)
+            user_record = get_auth().get_user_by_email(request.identifier)
         elif is_phone(request.identifier):
             # Login with phone number
             # Format phone number to E.164 format if needed
@@ -160,7 +164,7 @@ async def login_user(request: UserLoginRequest):
                 # Assume it's a local number, add country code (you might want to make this configurable)
                 phone = f"+91{phone}"  # Default to India (+91)
 
-            user_record = auth.get_user_by_phone_number(phone)
+            user_record = get_auth().get_user_by_phone_number(phone)
         else:
             raise HTTPException(status_code=400, detail="Invalid identifier format")
 
@@ -168,7 +172,7 @@ async def login_user(request: UserLoginRequest):
         # This would typically be done on the client side with Firebase Auth SDK
 
         # Generate custom token for the user
-        custom_token = auth.create_custom_token(user_record.uid)
+        custom_token = get_auth().create_custom_token(user_record.uid)
 
         return {
             "message": "Login successful",
@@ -177,8 +181,6 @@ async def login_user(request: UserLoginRequest):
             "email": user_record.email,
             "phone": user_record.phone_number,
         }
-    except auth.UserNotFoundError:
-        raise HTTPException(status_code=401, detail="Invalid credentials")
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Login failed: {str(e)}")
 
@@ -190,19 +192,28 @@ async def firebase_auth(request: GoogleSignInRequest):
         print(
             f"🔥 Firebase auth request received with ID token: {request.id_token[:50]}..."
         )
+        print(f"📏 Token length: {len(request.id_token)}")
+        print(f"🔍 Token format check: {'eyJ' in request.id_token[:10]}")
 
         # Verify the ID token (works for all Firebase auth methods)
         print("🔍 Verifying ID token...")
-        decoded_token = auth.verify_id_token(request.id_token)
-        uid = decoded_token["uid"]
-        print(f"✅ ID token verified successfully for UID: {uid}")
-        print(
-            f"📋 Decoded token info: name={decoded_token.get('name')}, email={decoded_token.get('email')}"
-        )
+        try:
+            decoded_token = get_auth().verify_id_token(request.id_token)
+            uid = decoded_token["uid"]
+            print(f"✅ ID token verified successfully for UID: {uid}")
+            print(
+                f"📋 Decoded token info: name={decoded_token.get('name')}, email={decoded_token.get('email')}"
+            )
+        except Exception as e:
+            print(f"❌ Invalid ID token error: {e}")
+            print(
+                f"🔍 Token details: length={len(request.id_token)}, starts_with_eyJ={'eyJ' in request.id_token[:10]}"
+            )
+            raise HTTPException(status_code=401, detail=f"Invalid ID token: {str(e)}")
 
         # Check if user exists in our database
         print(f"🔍 Checking if user {uid} exists in database...")
-        user = await db.get_user(uid)
+        user = await UserRepository().get_user(uid)
         print(f"👤 User found in database: {user is not None}")
 
         if not user:
@@ -223,7 +234,7 @@ async def firebase_auth(request: GoogleSignInRequest):
 
             # Save to database
             print("💾 Saving user to database...")
-            success = await db.create_user(user)
+            success = await UserRepository().create_user(user)
             if not success:
                 print("❌ Failed to save user to database")
                 raise HTTPException(
@@ -233,7 +244,7 @@ async def firebase_auth(request: GoogleSignInRequest):
 
         # Generate custom token
         print("🎫 Generating custom token...")
-        custom_token = auth.create_custom_token(uid)
+        custom_token = get_auth().create_custom_token(uid)
         print("✅ Custom token generated successfully")
 
         return {
@@ -243,15 +254,8 @@ async def firebase_auth(request: GoogleSignInRequest):
             "email": user.profile.email,
             "is_new_user": user is None,
         }
-    except auth.InvalidIdTokenError as e:
-        print(f"❌ Invalid ID token error: {str(e)}")
-        raise HTTPException(status_code=401, detail=f"Invalid ID token: {str(e)}")
-    except auth.ExpiredIdTokenError as e:
-        print(f"❌ Expired ID token error: {str(e)}")
-        raise HTTPException(status_code=401, detail=f"Expired ID token: {str(e)}")
-    except auth.RevokedIdTokenError as e:
-        print(f"❌ Revoked ID token error: {str(e)}")
-        raise HTTPException(status_code=401, detail=f"Revoked ID token: {str(e)}")
+    except HTTPException:
+        raise
     except Exception as e:
         print(f"❌ Unexpected error in firebase_auth: {type(e).__name__}: {str(e)}")
         import traceback
@@ -277,7 +281,7 @@ async def update_user_profile(
     """Update current user's profile"""
     try:
         # Update Firebase Auth user record
-        auth.update_user(
+        get_auth().update_user(
             current_user.uid, display_name=request.name or current_user.profile.name
         )
 
@@ -291,7 +295,7 @@ async def update_user_profile(
             updates["profile.risk_profile"] = request.risk_profile
 
         if updates:
-            success = await db.update_user(current_user.uid, updates)
+            success = await UserRepository().update_user(current_user.uid, updates)
             if not success:
                 raise HTTPException(
                     status_code=500, detail="Failed to update profile in database"
@@ -320,7 +324,7 @@ async def update_user_consents(
             updates["consents.retention_days"] = request.retention_days
 
         if updates:
-            success = await db.update_user(current_user.uid, updates)
+            success = await UserRepository().update_user(current_user.uid, updates)
             if not success:
                 raise HTTPException(
                     status_code=500, detail="Failed to update consents in database"

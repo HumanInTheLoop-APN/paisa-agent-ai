@@ -7,8 +7,8 @@ from .base_repository import BaseRepository
 class MessageRepository(BaseRepository[Message]):
     """Repository for message operations"""
 
-    def __init__(self):
-        super().__init__("messages")
+    def __init__(self, db=None):
+        super().__init__("messages", db=db)
         self._item_type = Message
 
     def _get_key(self, item: Message) -> str:

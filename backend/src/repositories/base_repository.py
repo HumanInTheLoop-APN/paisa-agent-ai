@@ -3,7 +3,6 @@ from abc import ABC, abstractmethod
 from datetime import datetime
 from typing import Any, Dict, Generic, List, Optional, Type, TypeVar
 
-import firebase_admin
 from firebase_admin import firestore
 from pydantic import BaseModel
 
@@ -14,12 +13,14 @@ T = TypeVar("T", bound=BaseModel)
 class BaseRepository(ABC, Generic[T]):
     """Base repository class for Firebase Firestore operations"""
 
-    def __init__(self, collection_name: str):
-        # Initialize Firestore client
-        if not firebase_admin._apps:
-            firebase_admin.initialize_app()
+    def __init__(self, collection_name: str, db: Optional[firestore.Client] = None):
+        # Use provided Firestore client or get from Firebase config
+        if db is None:
+            from ..config.firebase_config import get_firestore
 
-        self.db = firestore.client()
+            self.db = get_firestore()
+        else:
+            self.db = db
         self.collection = self.db.collection(collection_name)
         self._item_type: Optional[Type[T]] = None  # Will be set by subclasses
 

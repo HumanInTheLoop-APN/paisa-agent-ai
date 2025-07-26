@@ -1,14 +1,14 @@
 from typing import Any, Dict, List, Optional
 
-from ..models import MessageCreate, MessageRole, MessageType
-from ..repositories import MessageRepository
+from ..models import Message, MessageCreate, MessageRole, MessageType
+from ..repositories.message_repository import MessageRepository
 
 
 class MessageService:
     """Service class for message business logic"""
 
-    def __init__(self):
-        self.message_repo = MessageRepository()
+    def __init__(self, message_repository: MessageRepository):
+        self.message_repo = message_repository
 
     async def create_message(
         self,
@@ -63,17 +63,15 @@ class MessageService:
         # For now, we'll return all messages for the session
         return messages
 
-    async def get_message(
-        self, message_id: str, user_id: str
-    ) -> Optional[Dict[str, Any]]:
+    async def get_message(self, message_id: str, user_id: str) -> Optional[Message]:
         """Get a specific message with access control"""
         if not message_id or not user_id:
             raise ValueError("Message ID and User ID are required")
 
-        message = await self.message_repo.get(message_id)
+        message = await self.message_repo.get_by_id(message_id)
 
         # Check access control (in a real app, you'd check session ownership)
-        if message and message.get("user_id") != user_id:
+        if message and message.user_id != user_id:
             raise PermissionError("Access denied to this message")
 
         return message

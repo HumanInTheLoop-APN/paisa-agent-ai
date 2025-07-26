@@ -8,6 +8,7 @@ from .message import (
     MessageType,
     MessageUpdate,
 )
+from .user import User, UserConsents, UserProfile
 
 __all__ = [
     "Artifact",
@@ -21,4 +22,7 @@ __all__ = [
     "MessageType",
     "MessageUpdate",
     "MessageRole",
+    "User",
+    "UserConsents",
+    "UserProfile",
 ]

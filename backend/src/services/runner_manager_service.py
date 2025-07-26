@@ -6,9 +6,13 @@ from google.adk.artifacts.in_memory_artifact_service import (
 )
 from google.adk.runners import Runner
 from google.adk.sessions import DatabaseSessionService
+from google.adk.sessions.in_memory_session_service import (
+    InMemorySessionService,
+)
 from google.genai import types
 
 from ..agents.root_agent import root_agent
+from ..models.artifact import ArtifactSource, ArtifactType
 from ..models.message import MessageRole, MessageType
 from .artifact_service import ArtifactService
 from .message_service import MessageService
@@ -17,15 +21,12 @@ from .message_service import MessageService
 class RunnerManagerService:
     """Service for managing agent runners and sessions"""
 
-    def __init__(self):
+    def __init__(self, auth_client=None):
         # Create database session service
         self.app_name = "MoneyTalk"
-        self.session_service = DatabaseSessionService(
-            db_url="sqlite://agent_sessions.db"
-        )
+        self.session_service = InMemorySessionService()
         self.artifact_service = InMemoryArtifactService()
-        self.message_service = MessageService()
-        self.artifact_service_backend = ArtifactService()
+        self.auth_client = auth_client
 
         # Singleton runner instance
         self._runner: Optional[Runner] = None
@@ -94,15 +95,45 @@ class RunnerManagerService:
                 new_message=content,
             )
 
-            # Extract agent response
+            # Extract agent response and handle artifacts
             agent_response = ""
+            artifacts_created = []
+
             async for event in response:
                 print(f"Event received: {event}")
+
                 # Extract text content from agent response
                 if hasattr(event, "content") and event.content:
                     for part in event.content.parts or []:
                         if hasattr(part, "text") and part.text:
                             agent_response += part.text
+
+                # Handle artifact creation events from ADK
+                if hasattr(event, "artifacts") and event.artifacts:
+                    for artifact_event in event.artifacts:
+                        try:
+                            # Map ADK artifact types to our artifact types
+                            artifact_type = self._map_adk_artifact_type(
+                                artifact_event.type
+                            )
+
+                            artifact = await self.artifact_service_backend.create_ai_generated_artifact(
+                                session_id=backend_session_id,
+                                user_id=user_id,
+                                message_id=user_message["id"],
+                                artifact_type=artifact_type,
+                                title=artifact_event.title or "Generated Artifact",
+                                content=artifact_event.content or {},
+                                description=artifact_event.description,
+                                metadata={
+                                    "adk_artifact_id": artifact_event.id,
+                                    "adk_session_id": session_id,
+                                    "source": "adk_runner",
+                                },
+                            )
+                            artifacts_created.append(artifact)
+                        except Exception as e:
+                            print(f"Failed to create artifact: {e}")
 
             # Save agent response to backend
             assistant_message = await self.message_service.create_message(
@@ -114,6 +145,7 @@ class RunnerManagerService:
                 metadata={
                     "adk_session_id": session_id,
                     "processing_complete": True,
+                    "artifacts_created": len(artifacts_created),
                 },
             )
 
@@ -123,6 +155,7 @@ class RunnerManagerService:
                 "assistant_message_id": assistant_message["id"],
                 "response": agent_response,
                 "adk_session_id": session_id,
+                "artifacts_created": len(artifacts_created),
             }
 
         except Exception as e:
@@ -143,6 +176,18 @@ class RunnerManagerService:
                 "error_message_id": error_message["id"],
             }
 
+    def _map_adk_artifact_type(self, adk_type: str) -> ArtifactType:
+        """Map ADK artifact types to our artifact types"""
+        type_mapping = {
+            "chart": ArtifactType.CHART,
+            "report": ArtifactType.REPORT,
+            "analysis": ArtifactType.ANALYSIS,
+            "visualization": ArtifactType.VISUALIZATION,
+            "data_export": ArtifactType.DATA_EXPORT,
+            "recommendation": ArtifactType.RECOMMENDATION,
+        }
+        return type_mapping.get(adk_type.lower(), ArtifactType.OTHER)
+
     async def health_check(self) -> Dict[str, Any]:
         """Check the health of the runner manager"""
         try:
@@ -151,6 +196,7 @@ class RunnerManagerService:
                 "runner_initialized": self._runner is not None,
                 "session_service": "DatabaseSessionService",
                 "artifact_service": "InMemoryArtifactService",
+                "backend_artifact_service": "ArtifactService",
             }
         except Exception as e:
             return {"status": "unhealthy", "error": str(e)}
