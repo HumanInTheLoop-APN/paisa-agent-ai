@@ -1,18 +1,22 @@
 from typing import List, Optional
 
+from fastapi import HTTPException
+
 from ..models.chat_session import (
     ChatSession,
     ChatSessionCreate,
     ChatSessionUpdate,
 )
-from ..repositories.chat_session_repository import ChatSessionRepository
+from ..repositories import ChatSessionRepository, MessageRepository
 
 
 class ChatSessionService:
     """Service for chat session operations"""
 
     def __init__(
-        self, chat_session_repository: ChatSessionRepository, message_repository=None
+        self,
+        chat_session_repository: ChatSessionRepository,
+        message_repository: MessageRepository,
     ):
         self.repository = chat_session_repository
         self.message_repository = message_repository
@@ -20,14 +24,14 @@ class ChatSessionService:
     async def create_session(
         self,
         user_id: str,
-        title: Optional[str] = None,
-        description: Optional[str] = None,
     ) -> ChatSession:
         """Create a new chat session for a user"""
-        session_data = ChatSessionCreate(
-            user_id=user_id, title=title or "New Chat", description=description
-        )
-        return await self.repository.create_session(session_data)
+        try:
+            session_data = ChatSessionCreate(user_id=user_id)
+            return await self.repository.create_session(session_data)
+        except Exception as e:
+            print(f"Error creating chat session: {e}")
+            raise HTTPException(status_code=500, detail=str(e))
 
     async def get_user_sessions(
         self, user_id: str, limit: Optional[int] = None

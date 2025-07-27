@@ -8,25 +8,29 @@ from ..models.chat_session import (
 from .base_repository import BaseRepository
 
 
-class ChatSessionRepository(BaseRepository[ChatSession]):
+class ChatSessionRepository(
+    BaseRepository[
+        ChatSession,
+        ChatSessionCreate,
+        ChatSessionUpdate,
+    ]
+):
     """Repository for chat session operations"""
 
     def __init__(self, db=None):
         super().__init__("chat_sessions", db=db)
-        self._item_type = ChatSession
 
     def _get_key(self, item: ChatSession) -> str:
         """Get the unique key for a chat session"""
         return item.id
 
-    def _validate_item(self, item: ChatSession) -> bool:
+    def _validate_update_item(self, item: ChatSessionUpdate) -> bool:
         """Validate a chat session before storage"""
-        return (
-            hasattr(item, "user_id")
-            and item.user_id is not None
-            and hasattr(item, "id")
-            and item.id is not None
-        )
+        return hasattr(item, "id") and getattr(item, "id") is not None
+
+    def _validate_create_item(self, item: ChatSessionCreate) -> bool:
+        """Validate a chat session before storage"""
+        return hasattr(item, "user_id") and item.user_id is not None
 
     def _reconstruct_item(self, data: Dict[str, Any]) -> ChatSession:
         """Reconstruct a ChatSession from stored data"""
@@ -34,17 +38,7 @@ class ChatSessionRepository(BaseRepository[ChatSession]):
 
     async def create_session(self, session_data: ChatSessionCreate) -> ChatSession:
         """Create a new chat session"""
-        session = ChatSession(
-            id=None,  # Will be set by base repository
-            user_id=session_data.user_id,
-            title=session_data.title,
-            description=session_data.description,
-            created_at=None,  # Will be set by base repository
-            updated_at=None,  # Will be set by base repository
-            message_count=0,
-            is_active=True,
-        )
-        return await self.create(session)
+        return await self.create(session_data)
 
     async def get_user_sessions(
         self, user_id: str, limit: Optional[int] = None

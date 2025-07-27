@@ -4,8 +4,8 @@ from .chat_session import ChatSession, ChatSessionCreate, ChatSessionUpdate
 from .message import (
     Message,
     MessageCreate,
+    MessageEvent,
     MessageRole,
-    MessageType,
     MessageUpdate,
 )
 from .user import User, UserConsents, UserProfile
@@ -19,9 +19,9 @@ __all__ = [
     "ChatSessionUpdate",
     "Message",
     "MessageCreate",
-    "MessageType",
     "MessageUpdate",
     "MessageRole",
+    "MessageEvent",
     "User",
     "UserConsents",
     "UserProfile",

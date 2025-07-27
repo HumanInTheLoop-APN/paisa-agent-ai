@@ -21,9 +21,11 @@ from ..services.runner_manager_service import RunnerManagerService
 
 def get_artifact_service(
     artifact_repo: ArtifactRepositoryDep,
+    message_repo: MessageRepositoryDep,
+    user_repo: UserRepositoryDep,
 ) -> ArtifactService:
     """Get ArtifactService instance with dependency injection"""
-    return ArtifactService(artifact_repo)
+    return ArtifactService(artifact_repo, message_repo, user_repo)
 
 
 def get_artifact_service_with_deps(
@@ -60,10 +62,15 @@ def get_message_service(
     return MessageService(message_repo)
 
 
-def get_runner_manager_service() -> RunnerManagerService:
+def get_runner_manager_service(
+    message_service: MessageService = Depends(get_message_service),
+) -> RunnerManagerService:
     """Get RunnerManagerService instance with dependency injection"""
     auth_client = get_auth()
-    return RunnerManagerService(auth_client)
+    return RunnerManagerService(
+        message_service,
+        auth_client,
+    )
 
 
 ArtifactServiceDep = Annotated[ArtifactService, Depends(get_artifact_service)]

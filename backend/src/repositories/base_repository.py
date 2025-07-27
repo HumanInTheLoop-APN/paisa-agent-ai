@@ -4,16 +4,23 @@ from datetime import datetime
 from typing import Any, Dict, Generic, List, Optional, Type, TypeVar
 
 from firebase_admin import firestore
+from google.cloud.firestore_v1.client import Client
 from pydantic import BaseModel
 
 # Constrain T to be a Pydantic BaseModel
 T = TypeVar("T", bound=BaseModel)
+CreateT = TypeVar("CreateT", bound=BaseModel)
+UpdateT = TypeVar("UpdateT", bound=BaseModel)
 
 
-class BaseRepository(ABC, Generic[T]):
+class BaseRepository(ABC, Generic[T, CreateT, UpdateT]):
     """Base repository class for Firebase Firestore operations"""
 
-    def __init__(self, collection_name: str, db: Optional[firestore.Client] = None):
+    def __init__(
+        self,
+        collection_name: str,
+        db: Optional[Client] = None,
+    ):
         # Use provided Firestore client or get from Firebase config
         if db is None:
             from ..config.firebase_config import get_firestore
@@ -38,31 +45,41 @@ class BaseRepository(ABC, Generic[T]):
         pass
 
     @abstractmethod
-    def _validate_item(self, item: T) -> bool:
+    def _validate_create_item(self, item: CreateT) -> bool:
         """Validate an item before storage"""
         pass
 
-    async def create(self, item: T) -> T:
+    @abstractmethod
+    def _validate_update_item(self, item: UpdateT) -> bool:
+        """Validate an item before storage"""
+        pass
+
+    async def create(self, item: CreateT) -> T:
         """Create a new item in Firestore"""
-        if not self._validate_item(item):
+        if not self._validate_create_item(item):
             raise ValueError("Invalid item data")
 
+        create_item = item.model_dump()
+
         # Generate ID and timestamps if not present
-        if not hasattr(item, "id") or not getattr(item, "id"):
-            setattr(item, "id", self._generate_id())
+        if not create_item.get("id"):
+            print("Generating ID")
+            create_item["id"] = self._generate_id()
 
-        if not hasattr(item, "created_at") or not getattr(item, "created_at"):
-            setattr(item, "created_at", self._get_timestamp())
+        if not create_item.get("created_at"):
+            print("Generating created_at")
+            create_item["created_at"] = self._get_timestamp()
 
-        if not hasattr(item, "updated_at") or not getattr(item, "updated_at"):
-            setattr(item, "updated_at", self._get_timestamp())
+        if not create_item.get("updated_at"):
+            print("Generating updated_at")
+            create_item["updated_at"] = self._get_timestamp()
 
         # Convert to dict and store in Firestore
-        item_data = item.model_dump() if hasattr(item, "model_dump") else item.dict()
-        doc_ref = self.collection.document(item.id)
-        doc_ref.set(item_data)
+        print("Item data", create_item)
+        doc_ref = self.collection.document(create_item["id"])
+        doc_ref.set(create_item)
 
-        return item
+        return self._reconstruct_item(create_item)
 
     async def get_by_id(self, item_id: str) -> Optional[T]:
         """Get item by ID from Firestore"""
@@ -92,23 +109,23 @@ class BaseRepository(ABC, Generic[T]):
 
         return items
 
-    async def update(self, item: T) -> Optional[T]:
+    async def update(self, item: UpdateT) -> Optional[T]:
         """Update an existing item in Firestore"""
-        if not self._validate_item(item):
+        if not self._validate_update_item(item):
             raise ValueError("Invalid item data")
 
+        update_item = item.model_dump()
         # Update timestamp
-        if hasattr(item, "updated_at"):
-            setattr(item, "updated_at", self._get_timestamp())
+        if not update_item.get("updated_at"):
+            update_item["updated_at"] = self._get_timestamp()
 
         # Convert to dict and update in Firestore
-        item_data = item.model_dump() if hasattr(item, "model_dump") else item.dict()
-        doc_ref = self.collection.document(item.id)
+        doc_ref = self.collection.document(update_item["id"])
         doc = doc_ref.get()
 
         if doc.exists:
-            doc_ref.update(item_data)
-            return item
+            doc_ref.update(update_item)
+            return self._reconstruct_item(update_item)
         return None
 
     async def delete(self, item_id: str) -> bool:
@@ -133,10 +150,12 @@ class BaseRepository(ABC, Generic[T]):
 
         # Handle Firestore timestamp conversion
         for key, value in data.items():
+            print(f"Key: {key}, Value: {value}")
             if hasattr(value, "timestamp"):
                 # Convert Firestore timestamp to datetime
                 data[key] = value.timestamp()
 
+        print(f"Data: {data}")
         return self._item_type(**data)
 
     async def get_by_field(self, field: str, value: Any) -> List[T]:

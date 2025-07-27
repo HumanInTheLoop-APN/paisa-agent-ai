@@ -14,7 +14,6 @@ from pydantic import BaseModel
 from ..auth.firebase_auth import GetCurrentUserDep, get_current_user
 from ..dependencies import ArtifactServiceDep
 from ..models.artifact import ArtifactSource, ArtifactStatus, ArtifactType
-from ..services import ArtifactService
 
 router = APIRouter()
 

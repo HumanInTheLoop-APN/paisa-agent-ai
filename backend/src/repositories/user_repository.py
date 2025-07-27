@@ -1,21 +1,24 @@
 from typing import Any, Dict, List, Optional
 
-from ..models.user import User
+from ..models.user import User, UserCreate, UserUpdate
 from .base_repository import BaseRepository
 
 
-class UserRepository(BaseRepository[User]):
+class UserRepository(BaseRepository[User, UserCreate, UserUpdate]):
     """Repository for user operations"""
 
     def __init__(self, db=None):
         super().__init__("users", db=db)
-        self._item_type = User
 
     def _get_key(self, item: User) -> str:
         """Get the unique key for a user"""
         return item.uid
 
-    def _validate_item(self, item: User) -> bool:
+    def _validate_update_item(self, item: UserUpdate) -> bool:
+        """Validate a user before storage"""
+        return hasattr(item, "uid") and getattr(item, "uid") is not None
+
+    def _validate_create_item(self, item: UserCreate) -> bool:
         """Validate a user before storage"""
         return (
             hasattr(item, "uid")

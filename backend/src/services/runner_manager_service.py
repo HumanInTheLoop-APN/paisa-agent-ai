@@ -1,31 +1,36 @@
+import traceback
 import uuid
-from typing import Any, Dict, Optional
+from datetime import datetime
+from typing import Any, AsyncGenerator, Dict, List, Optional
 
 from google.adk.artifacts.in_memory_artifact_service import (
     InMemoryArtifactService,
 )
 from google.adk.runners import Runner
-from google.adk.sessions import DatabaseSessionService
 from google.adk.sessions.in_memory_session_service import (
     InMemorySessionService,
 )
 from google.genai import types
 
 from ..agents.root_agent import root_agent
-from ..models.artifact import ArtifactSource, ArtifactType
-from ..models.message import MessageRole, MessageType
-from .artifact_service import ArtifactService
-from .message_service import MessageService
+from ..models.artifact import ArtifactType
+from ..models.message import MessageEvent, MessageRole, UsageMetadata
+from ..services import MessageService
 
 
 class RunnerManagerService:
     """Service for managing agent runners and sessions"""
 
-    def __init__(self, auth_client=None):
+    def __init__(
+        self,
+        message_service: MessageService,
+        auth_client=None,
+    ):
         # Create database session service
         self.app_name = "MoneyTalk"
         self.session_service = InMemorySessionService()
         self.artifact_service = InMemoryArtifactService()
+        self.message_service = message_service
         self.auth_client = auth_client
 
         # Singleton runner instance
@@ -51,7 +56,7 @@ class RunnerManagerService:
         session_id: Optional[str],
         message_content: str,
         backend_session_id: str,
-    ) -> Dict[str, Any]:
+    ):
         """Process a user message through the agent system"""
         try:
             # Generate session_id if None
@@ -59,11 +64,12 @@ class RunnerManagerService:
                 session_id = str(uuid.uuid4())
 
             # Check if session exists
-            existing_sessions = self.session_service.list_sessions(
+            existing_sessions = await self.session_service.list_sessions(
                 app_name=self.app_name, user_id=user_id
             )
+            print(f"Existing sessions: {existing_sessions}")
 
-            existing_session_ids = [session.id for session in existing_sessions]
+            existing_session_ids = [session[0] for session in existing_sessions]
 
             if session_id not in existing_session_ids:
                 # Create a new session
@@ -79,12 +85,10 @@ class RunnerManagerService:
             )
 
             # Save user message to backend
-            user_message = await self.message_service.create_message(
+            user_message = await self.message_service.create_user_message(
                 session_id=backend_session_id,
                 user_id=user_id,
-                role=MessageRole.USER,
-                content=message_content,
-                message_type=MessageType.TEXT,
+                human_content=message_content,
             )
 
             # Process with agent
@@ -95,86 +99,149 @@ class RunnerManagerService:
                 new_message=content,
             )
 
-            # Extract agent response and handle artifacts
-            agent_response = ""
-            artifacts_created = []
+            # Collect events from agent response
+            events: List[MessageEvent] = []
+            event_sequence = 1
+            all_tool_calls: List[Dict[str, Any]] = []
+            all_tool_results: List[Dict[str, Any]] = []
+            authors: List[str] = []
+            has_errors = False
+            error_summary: Dict[str, Any] = {}
 
             async for event in response:
                 print(f"Event received: {event}")
 
-                # Extract text content from agent response
+                # Extract event data
+                event_id = getattr(event, "id", str(uuid.uuid4()))
+                author = getattr(event, "author", "unknown_agent")
+                timestamp = datetime.now()
+
+                # Add author to list if not already present
+                if author not in authors:
+                    authors.append(author)
+
+                # Extract usage metadata
+                usage_metadata = None
+                if hasattr(event, "usage_metadata") and event.usage_metadata:
+                    usage_metadata = UsageMetadata(
+                        prompt_token_count=getattr(
+                            event.usage_metadata, "prompt_token_count", None
+                        ),
+                        response_token_count=getattr(
+                            event.usage_metadata, "candidates_token_count", None
+                        ),
+                        total_token_count=getattr(
+                            event.usage_metadata, "total_token_count", None
+                        ),
+                        model_name=getattr(event.usage_metadata, "model_name", None),
+                        invocation_id=getattr(event, "invocation_id", None),
+                        processing_time=None,  # Will be calculated later
+                        cost_estimate=None,  # Will be calculated later
+                    )
+
+                # Extract content and tool data
+                event_content = ""
+                event_tool_calls: List[Dict[str, Any]] = []
+                event_tool_results: List[Dict[str, Any]] = []
+
                 if hasattr(event, "content") and event.content:
                     for part in event.content.parts or []:
                         if hasattr(part, "text") and part.text:
-                            agent_response += part.text
+                            event_content += part.text
 
-                # Handle artifact creation events from ADK
-                if hasattr(event, "artifacts") and event.artifacts:
-                    for artifact_event in event.artifacts:
-                        try:
-                            # Map ADK artifact types to our artifact types
-                            artifact_type = self._map_adk_artifact_type(
-                                artifact_event.type
+                        if hasattr(part, "function_call") and part.function_call:
+                            print(f"Function call received: {part.function_call}")
+                            tool_call = {
+                                "name": part.function_call.name,
+                                "args": part.function_call.args,
+                                "id": getattr(part.function_call, "id", None),
+                            }
+                            event_tool_calls.append(tool_call)
+                            all_tool_calls.append(tool_call)
+
+                        if (
+                            hasattr(part, "function_response")
+                            and part.function_response
+                        ):
+                            print(
+                                f"Function response received: {part.function_response}"
                             )
+                            tool_result = {
+                                "name": part.function_response.name,
+                                "response": part.function_response.response,
+                                "id": getattr(part.function_response, "id", None),
+                            }
+                            event_tool_results.append(tool_result)
+                            all_tool_results.append(tool_result)
 
-                            artifact = await self.artifact_service_backend.create_ai_generated_artifact(
-                                session_id=backend_session_id,
-                                user_id=user_id,
-                                message_id=user_message["id"],
-                                artifact_type=artifact_type,
-                                title=artifact_event.title or "Generated Artifact",
-                                content=artifact_event.content or {},
-                                description=artifact_event.description,
-                                metadata={
-                                    "adk_artifact_id": artifact_event.id,
-                                    "adk_session_id": session_id,
-                                    "source": "adk_runner",
-                                },
-                            )
-                            artifacts_created.append(artifact)
-                        except Exception as e:
-                            print(f"Failed to create artifact: {e}")
+                # Check for errors
+                if hasattr(event, "error_code") and event.error_code:
+                    has_errors = True
+                    error_summary[event_id] = {
+                        "error_code": event.error_code,
+                        "error_message": getattr(event, "error_message", None),
+                    }
 
-            # Save agent response to backend
-            assistant_message = await self.message_service.create_message(
+                # Create MessageEvent
+                message_event = MessageEvent(
+                    event_id=event_id,
+                    timestamp=timestamp,
+                    sequence_number=event_sequence,
+                    author=author,
+                    content=event_content if event_content else None,
+                    tool_calls=event_tool_calls if event_tool_calls else None,
+                    tool_results=event_tool_results if event_tool_results else None,
+                    metadata={
+                        "adk_session_id": session_id,
+                        "invocation_id": getattr(event, "invocation_id", None),
+                        "turn_complete": getattr(event, "turn_complete", None),
+                        "partial": getattr(event, "partial", None),
+                        "interrupted": getattr(event, "interrupted", None),
+                    },
+                    usage_metadata=usage_metadata,
+                    error_code=getattr(event, "error_code", None),
+                    error_message=getattr(event, "error_message", None),
+                    interrupted=getattr(event, "interrupted", None),
+                    custom_metadata={
+                        "grounding_metadata": getattr(
+                            event, "grounding_metadata", None
+                        ),
+                        "actions": getattr(event, "actions", None),
+                        "long_running_tool_ids": getattr(
+                            event, "long_running_tool_ids", None
+                        ),
+                        "branch": getattr(event, "branch", None),
+                    },
+                    actions=getattr(event, "actions", None),
+                    long_running_tool_ids=getattr(event, "long_running_tool_ids", None),
+                    branch=getattr(event, "branch", None),
+                    id=getattr(event, "id", None),
+                )
+                yield message_event.model_dump_json()
+                events.append(message_event)
+                event_sequence += 1
+
+            # Save assistant message to backend
+            await self.message_service.create_assistant_message(
                 session_id=backend_session_id,
                 user_id=user_id,
-                role=MessageRole.ASSISTANT,
-                content=agent_response,
-                message_type=MessageType.TEXT,
+                events=events,
                 metadata={
                     "adk_session_id": session_id,
                     "processing_complete": True,
-                    "artifacts_created": len(artifacts_created),
+                    "authors": authors,
+                    "has_errors": has_errors,
+                    "error_summary": error_summary if has_errors else None,
                 },
             )
-
-            return {
-                "success": True,
-                "user_message_id": user_message["id"],
-                "assistant_message_id": assistant_message["id"],
-                "response": agent_response,
-                "adk_session_id": session_id,
-                "artifacts_created": len(artifacts_created),
-            }
+            yield '{"done": "true"}'
+            print("Done")
 
         except Exception as e:
             print(f"Error processing message: {e}")
-            # Save error message
-            error_message = await self.message_service.create_message(
-                session_id=backend_session_id,
-                user_id=user_id,
-                role=MessageRole.ASSISTANT,
-                content=f"Sorry, I encountered an error: {str(e)}",
-                message_type=MessageType.ERROR,
-                metadata={"error": True, "error_details": str(e)},
-            )
+            traceback.print_exc()
 
-            return {
-                "success": False,
-                "error": str(e),
-                "error_message_id": error_message["id"],
-            }
+            raise e
 
     def _map_adk_artifact_type(self, adk_type: str) -> ArtifactType:
         """Map ADK artifact types to our artifact types"""
@@ -194,7 +261,7 @@ class RunnerManagerService:
             return {
                 "status": "healthy",
                 "runner_initialized": self._runner is not None,
-                "session_service": "DatabaseSessionService",
+                "session_service": "InMemorySessionService",
                 "artifact_service": "InMemoryArtifactService",
                 "backend_artifact_service": "ArtifactService",
             }

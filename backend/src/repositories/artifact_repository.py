@@ -1,5 +1,5 @@
 import os
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import Any, Dict, List, Optional
 
 from ..models.artifact import (
@@ -13,12 +13,17 @@ from ..models.artifact import (
 from .base_repository import BaseRepository
 
 
-class ArtifactRepository(BaseRepository[Artifact]):
+class ArtifactRepository(
+    BaseRepository[
+        Artifact,
+        ArtifactCreate,
+        ArtifactUpdate,
+    ]
+):
     """Repository for artifact operations"""
 
     def __init__(self, db=None):
         super().__init__("artifacts", db=db)
-        self._item_type = Artifact
 
     def _get_key(self, item: Artifact) -> str:
         """Get the unique key for an artifact"""

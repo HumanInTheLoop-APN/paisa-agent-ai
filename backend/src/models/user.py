@@ -34,3 +34,22 @@ class User(BaseModel):
     consents: UserConsents = Field(
         default_factory=UserConsents, description="User consent preferences"
     )
+
+
+class UserCreate(BaseModel):
+    uid: str = Field(description="Firebase user ID")
+    profile: UserProfile = Field(
+        default_factory=UserProfile, description="User profile information"
+    )
+    consents: UserConsents = Field(
+        default_factory=UserConsents, description="User consent preferences"
+    )
+
+
+class UserUpdate(BaseModel):
+    profile: UserProfile = Field(
+        default_factory=UserProfile, description="User profile information"
+    )
+    consents: UserConsents = Field(
+        default_factory=UserConsents, description="User consent preferences"
+    )

@@ -1,16 +1,13 @@
-from typing import List, Optional
+from datetime import datetime
+from typing import List, Optional, Union
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 
-from ..auth.firebase_auth import get_current_user
+from ..auth.firebase_auth import GetCurrentUserDep, get_current_user
+from ..dependencies import ChatSessionServiceDep
 
 router = APIRouter()
-
-
-class ChatSessionCreateRequest(BaseModel):
-    title: Optional[str] = None
-    description: Optional[str] = None
 
 
 class ChatSessionUpdateRequest(BaseModel):
@@ -23,8 +20,8 @@ class ChatSessionResponse(BaseModel):
     user_id: str
     title: Optional[str]
     description: Optional[str]
-    created_at: str
-    updated_at: str
+    created_at: Union[str, datetime]
+    updated_at: Union[str, datetime]
     message_count: int
     is_active: bool
 
@@ -34,15 +31,14 @@ class ChatSessionResponse(BaseModel):
 
 @router.post("/", response_model=ChatSessionResponse)
 async def create_chat_session(
-    request: ChatSessionCreateRequest, current_user: dict = Depends(get_current_user)
+    current_user: GetCurrentUserDep,
+    chat_session_service: ChatSessionServiceDep,
 ):
     """Create a new chat session for the current user"""
     try:
-        user_id = current_user["uid"]
-        session = await chat_session_service.create_session(
-            user_id=user_id, title=request.title, description=request.description
-        )
-        return ChatSessionResponse.from_orm(session)
+        user_id = current_user.uid
+        session = await chat_session_service.create_session(user_id=user_id)
+        return ChatSessionResponse.model_validate(session)
     except Exception as e:
         raise HTTPException(
             status_code=500, detail=f"Failed to create session: {str(e)}"

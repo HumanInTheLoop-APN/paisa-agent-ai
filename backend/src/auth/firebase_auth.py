@@ -5,8 +5,9 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel
 
 from ..config.firebase_config import get_auth
+from ..dependencies import UserRepositoryDep
 from ..models import User, UserConsents, UserProfile
-from ..repositories.user_repository import UserRepository
+from ..repositories import UserRepository
 
 router = APIRouter()
 security = HTTPBearer()
@@ -42,6 +43,7 @@ class UserConsentUpdateRequest(BaseModel):
 
 
 async def get_current_user(
+    user_repository_service: UserRepositoryDep,
     credentials: HTTPAuthorizationCredentials = Depends(security),
 ) -> User:
     """Get current user from Firebase token"""
@@ -69,7 +71,7 @@ async def get_current_user(
 
         # Fetch user from Firestore database
         print(f"🔍 Fetching user {uid} from database...")
-        user = await UserRepository().get_user(uid)
+        user = await user_repository_service.get_user(uid)
         if not user:
             print(f"❌ User {uid} not found in database")
             raise HTTPException(status_code=404, detail="User not found in database")

@@ -20,23 +20,81 @@ const api = axios.create({
   },
 });
 
-// Add request interceptor to include auth token
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem("authToken");
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
+// Function to get a fresh Firebase ID token
+const getFreshToken = async (): Promise<string | null> => {
+  try {
+    const currentUser = firebase.auth().currentUser;
+    if (!currentUser) {
+      console.log("No Firebase user found");
+      return null;
+    }
+
+    // Force token refresh to ensure we have a fresh token
+    const idToken = await currentUser.getIdToken(true);
+    console.log("🔄 Token refreshed successfully");
+    return idToken;
+  } catch (error) {
+    console.error("Error refreshing token:", error);
+    return null;
   }
+};
+
+// Add request interceptor to include auth token and handle token refresh
+api.interceptors.request.use(async (config) => {
+  try {
+    // Always get a fresh token for API calls to ensure it's not expired
+    const freshToken = await getFreshToken();
+
+    if (freshToken) {
+      config.headers.Authorization = `Bearer ${freshToken}`;
+      // Update stored token
+      localStorage.setItem("authToken", freshToken);
+    } else {
+      // If no fresh token, try to use stored token as fallback
+      const storedToken = localStorage.getItem("authToken");
+      if (storedToken) {
+        config.headers.Authorization = `Bearer ${storedToken}`;
+      }
+    }
+  } catch (error) {
+    console.error("Error in request interceptor:", error);
+  }
+
   return config;
 });
 
 // Add response interceptor to handle auth errors
 api.interceptors.response.use(
   (response) => response,
-  (error) => {
+  async (error) => {
     if (error.response?.status === 401) {
-      localStorage.removeItem("authToken");
-      localStorage.removeItem("user");
-      window.location.href = "/login";
+      console.log("🔄 401 error received, attempting token refresh...");
+
+      try {
+        // Try to refresh the token
+        const freshToken = await getFreshToken();
+
+        if (freshToken) {
+          // Retry the original request with fresh token
+          const originalRequest = error.config;
+          originalRequest.headers.Authorization = `Bearer ${freshToken}`;
+          localStorage.setItem("authToken", freshToken);
+
+          console.log("🔄 Retrying request with fresh token");
+          return api(originalRequest);
+        } else {
+          // Token refresh failed, user needs to re-authenticate
+          console.log("❌ Token refresh failed, redirecting to login");
+          localStorage.removeItem("authToken");
+          localStorage.removeItem("user");
+          window.location.href = "/login";
+        }
+      } catch (refreshError) {
+        console.error("Error during token refresh:", refreshError);
+        localStorage.removeItem("authToken");
+        localStorage.removeItem("user");
+        window.location.href = "/login";
+      }
     }
     return Promise.reject(error);
   }
@@ -141,16 +199,18 @@ export const authService = {
   },
 
   // Check if user is authenticated
-  isAuthenticated(): boolean {
-    const token = this.getToken();
-    if (!token) return false;
+  async isAuthenticated(): Promise<boolean> {
+    try {
+      const currentUser = firebase.auth().currentUser;
+      if (!currentUser) return false;
 
-    // Check if Firebase Auth is initialized and user exists
-    const firebaseUser = this.getCurrentUser();
-    if (!firebaseUser) return false;
-
-    // TODO: Optionally verify token expiry
-    return true;
+      // Check if we can get a fresh token
+      const freshToken = await getFreshToken();
+      return !!freshToken;
+    } catch (error) {
+      console.error("Error checking authentication:", error);
+      return false;
+    }
   },
 
   // Listen to Firebase Auth state changes
@@ -173,10 +233,14 @@ export const authService = {
   // Wait for Firebase Auth to be ready and check authentication
   async waitForAuthReady(): Promise<boolean> {
     return new Promise((resolve) => {
-      const unsubscribe = firebase.auth().onAuthStateChanged((user) => {
+      const unsubscribe = firebase.auth().onAuthStateChanged(async (user) => {
         unsubscribe();
-        const hasToken = this.getToken();
-        resolve(!!user && !!hasToken);
+        if (user) {
+          const hasValidToken = await this.isAuthenticated();
+          resolve(hasValidToken);
+        } else {
+          resolve(false);
+        }
       });
     });
   },
@@ -196,5 +260,10 @@ export const authService = {
     } else {
       return { isValid: false, type: "invalid" };
     }
+  },
+
+  // Force token refresh (can be called manually if needed)
+  async refreshToken(): Promise<string | null> {
+    return await getFreshToken();
   },
 };

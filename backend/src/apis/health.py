@@ -1,9 +1,8 @@
 from fastapi import APIRouter, HTTPException
 
-from ..services.runner_manager_service import RunnerManagerService
+from ..dependencies import RunnerManagerServiceDep
 
 router = APIRouter()
-runner_manager_service = RunnerManagerService()
 
 
 @router.get("/healthz")
@@ -17,7 +16,9 @@ async def health_check():
 
 
 @router.get("/readiness")
-async def readiness_check():
+async def readiness_check(
+    runner_manager_service: RunnerManagerServiceDep,
+):
     """Readiness check endpoint for Kubernetes"""
     try:
         # Check runner manager health

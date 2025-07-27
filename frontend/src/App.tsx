@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import '@nlux/themes/luna.css';
 import { Dashboard } from './components/Dashboard';
 import { Sidebar } from './components/Sidebar';
 import { HamburgerMenu } from './components/HamburgerMenu';
@@ -11,6 +12,7 @@ import { Login } from './components/Login';
 import { Register } from './components/Register';
 import { UserProfile } from './components/UserProfile';
 import { authService } from './services/authService';
+import { ChatInterface } from './components/ChatInterface';
 
 type AuthState = 'loading' | 'login' | 'register' | 'authenticated';
 
@@ -19,17 +21,22 @@ function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [currentPage, setCurrentPage] = useState('dashboard');
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [messageSubmitted, setMessageSubmitted] = useState<string | null>(null);
 
   const toggleSidebar = () => {
     setSidebarOpen(!sidebarOpen);
   };
 
+  const handleChatMessage = (message: string) => {
+    setMessageSubmitted(message);
+  };
+
   useEffect(() => {
     // Listen to Firebase Auth state changes
-    const unsubscribe = authService.onAuthStateChanged((user) => {
+    const unsubscribe = authService.onAuthStateChanged(async (user) => {
       console.log("Firebase Auth state changed:", user);
 
-      if (user && authService.isAuthenticated()) {
+      if (user && await authService.isAuthenticated()) {
         // User is signed in to Firebase and has local auth token
         setIsAuthenticated(true);
         setAuthState('authenticated');
@@ -112,11 +119,6 @@ function App() {
       return;
     }
     setCurrentPage(page);
-  };
-
-  const handleChatMessage = (message: string) => {
-    console.log('Chat message:', message);
-    // TODO: Integrate with chat service
   };
 
   const renderAuthContent = () => {
@@ -236,16 +238,23 @@ function App() {
           onToggleSidebar={toggleSidebar}
         />
 
-        {/* Main Content */}
-        <div style={{
-          transition: 'margin-left 0.3s ease',
-          marginLeft: sidebarOpen && window.innerWidth > 768 ? '0' : '0'
-        }}>
-          {renderCurrentPage()}
-        </div>
+
 
         {/* Floating Chat */}
-        <FloatingChat onSendMessage={handleChatMessage} />
+        {messageSubmitted ?
+          <ChatInterface submitMessage={messageSubmitted} onClose={() => setMessageSubmitted(null)} />
+          :
+          <>
+            {/* Main Content */}
+            <div style={{
+              transition: 'margin-left 0.3s ease',
+              marginLeft: sidebarOpen && window.innerWidth > 768 ? '0' : '0'
+            }}>
+              {renderCurrentPage()}
+            </div>
+            <FloatingChat onSendMessage={handleChatMessage} />
+          </>
+        }
       </div>
     );
   };
