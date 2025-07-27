@@ -1,3 +1,4 @@
+import os
 import traceback
 import uuid
 from datetime import datetime
@@ -7,6 +8,8 @@ from google.adk.artifacts.in_memory_artifact_service import (
     InMemoryArtifactService,
 )
 from google.adk.runners import Runner
+
+# from google.adk.sessions import VertexAiSessionService
 from google.adk.sessions.in_memory_session_service import (
     InMemorySessionService,
 )
@@ -14,7 +17,7 @@ from google.genai import types
 
 from ..agents.root_agent import root_agent
 from ..models.artifact import ArtifactType
-from ..models.message import MessageEvent, MessageRole, UsageMetadata
+from ..models.message import MessageEvent, UsageMetadata
 from ..services import MessageService
 
 
@@ -27,8 +30,13 @@ class RunnerManagerService:
         auth_client=None,
     ):
         # Create database session service
-        self.app_name = "MoneyTalk"
-        self.session_service = InMemorySessionService()
+        print(f"agent engine id: {os.getenv('AGENT_ENGINE_ID')}")
+        print(f"project id: {os.getenv('PROJECT_ID')}")
+        print(f"region: {os.getenv('REGION')}")
+        self.app_name = os.getenv("AGENT_ENGINE_ID")
+        self.session_service = (
+            InMemorySessionService()
+        )  # Integrate with Vertex AI Session Service
         self.artifact_service = InMemoryArtifactService()
         self.message_service = message_service
         self.auth_client = auth_client
@@ -43,7 +51,7 @@ class RunnerManagerService:
 
             # Create singleton runner
             self._runner = Runner(
-                app_name="MoneyTalk",
+                app_name=self.app_name,
                 agent=root_agent,
                 session_service=self.session_service,
             )

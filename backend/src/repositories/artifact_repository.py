@@ -29,7 +29,7 @@ class ArtifactRepository(
         """Get the unique key for an artifact"""
         return item.id
 
-    def _validate_item(self, item: Artifact) -> bool:
+    def _validate_create_item(self, item: Artifact) -> bool:
         """Validate an artifact before storage"""
         return (
             hasattr(item, "session_id")
@@ -43,6 +43,10 @@ class ArtifactRepository(
             and hasattr(item, "source")
             and item.source is not None
         )
+
+    def _validate_update_item(self, item: Artifact) -> bool:
+        """Validate an artifact before storage"""
+        return hasattr(item, "id") and item.id is not None
 
     def _reconstruct_item(self, data: Dict[str, Any]) -> Artifact:
         """Reconstruct an Artifact from stored data"""

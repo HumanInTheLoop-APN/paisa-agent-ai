@@ -2,6 +2,7 @@
 Service dependencies for FastAPI dependency injection
 """
 
+from functools import cache
 from typing import Annotated
 
 from fastapi import Depends
@@ -19,6 +20,7 @@ from ..services.message_service import MessageService
 from ..services.runner_manager_service import RunnerManagerService
 
 
+@cache
 def get_artifact_service(
     artifact_repo: ArtifactRepositoryDep,
     message_repo: MessageRepositoryDep,
@@ -28,6 +30,7 @@ def get_artifact_service(
     return ArtifactService(artifact_repo, message_repo, user_repo)
 
 
+@cache
 def get_artifact_service_with_deps(
     artifact_repo: ArtifactRepositoryDep,
     message_repo: MessageRepositoryDep,
@@ -40,6 +43,7 @@ def get_artifact_service_with_deps(
     return service
 
 
+@cache
 def get_chat_session_service(
     chat_session_repo: ChatSessionRepositoryDep,
     message_repo: MessageRepositoryDep,
@@ -48,13 +52,16 @@ def get_chat_session_service(
     return ChatSessionService(chat_session_repo, message_repo)
 
 
+@cache
 def get_chat_session_service_simple(
     chat_session_repo: ChatSessionRepositoryDep,
+    message_repo: MessageRepositoryDep,
 ) -> ChatSessionService:
     """Get ChatSessionService instance with only chat session repository"""
-    return ChatSessionService(chat_session_repo)
+    return ChatSessionService(chat_session_repo, message_repo)
 
 
+@cache
 def get_message_service(
     message_repo: MessageRepositoryDep,
 ) -> MessageService:
@@ -62,6 +69,7 @@ def get_message_service(
     return MessageService(message_repo)
 
 
+@cache
 def get_runner_manager_service(
     message_service: MessageService = Depends(get_message_service),
 ) -> RunnerManagerService:
