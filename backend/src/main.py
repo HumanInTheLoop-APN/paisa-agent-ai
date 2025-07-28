@@ -58,11 +58,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Add trusted host middleware for security
-app.add_middleware(
-    TrustedHostMiddleware,
-    allowed_hosts=["localhost", "127.0.0.1", "*.talktoyourmoney.com"],
-)
+# # Add trusted host middleware for security
+# app.add_middleware(
+#     TrustedHostMiddleware,
+#     allowed_hosts=["localhost", "127.0.0.1", "*.talktoyourmoney.com"],
+# )
 
 
 @app.exception_handler(Exception)

@@ -100,7 +100,7 @@ def table_tool(table: TableTool):
 
 
 agent = LlmAgent(
-    model="gemini-2.5-flash",
+    model="gemini-2.0-flash",
     name="finalise_response_agent",
     description="You are a helpful assistant that helps the user to get a formatted response from the other agents.",
     instruction=FINALIZE_RESPONSE_FORMATTER_AGENT,
